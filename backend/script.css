@@ -1,0 +1,237 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f0f4f8;
+    padding: 25px;
+    color: #2d3748;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.header {
+    background: linear-gradient(135deg, #2b6cb0 0%, #1a365d 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(43, 108, 176, 0.2);
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.aitu-logo {
+    width: 55px;
+    height: 55px;
+    object-fit: contain;
+    background: white;
+    border-radius: 50%;
+    padding: 5px;
+}
+
+.header h1 { font-size: 1.8rem; }
+.header p { font-size: 0.9rem; opacity: 0.9; margin-top: 3px; }
+
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 25px;
+}
+
+h2 {
+    font-size: 1.15rem;
+    color: #2d3748;
+    margin-bottom: 18px;
+    border-bottom: 2px solid #edf2f7;
+    padding-bottom: 10px;
+}
+
+.filter-group { margin-bottom: 20px; }
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: #4a5568;
+}
+
+select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+    background: #fff;
+    cursor: pointer;
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.product-card {
+    background: #fafbfc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.2s;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.product-img-container {
+    width: 85px;
+    height: 85px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    border: 1px solid #edf2f7;
+}
+
+.product-img-container img {
+    width: 55px;
+    height: 55px;
+    object-fit: contain;
+}
+
+.product-card h3 {
+    font-size: 1rem;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+.price {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #e53e3e;
+    margin-bottom: 12px;
+}
+
+.btn-add {
+    background: #3182ce;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s;
+}
+
+.btn-add:hover { background: #2b6cb0; }
+
+/* Карточки товаров в Корзине */
+.cart-items {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    min-height: 100px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px dashed #cbd5e0;
+}
+
+.cart-item-card {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px;
+    width: 145px;
+    text-align: center;
+    position: relative;
+}
+
+.cart-item-card img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-bottom: 5px;
+}
+
+.cart-item-card .name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cart-item-card .qty {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-top: 4px;
+}
+
+.cart-item-card .remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    cursor: pointer;
+    color: #e53e3e;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.empty-cart-msg {
+    color: #a0aec0;
+    font-style: italic;
+    margin: auto;
+    font-size: 0.95rem;
+}
+
+.cart-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.total-block { display: flex; flex-direction: column; }
+.total-label { font-size: 0.8rem; color: #718096; font-weight: 700; }
+.total-amount { font-size: 1.6rem; font-weight: 800; color: #2b6cb0; }
+
+.btn-checkout {
+    background: #38a169;
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-checkout:hover:not(:disabled) { background: #2f855a; }
+.btn-checkout:disabled { background: #cbd5e0; cursor: not-allowed; }
+.loading { color: #718096; font-size: 0.9rem; }

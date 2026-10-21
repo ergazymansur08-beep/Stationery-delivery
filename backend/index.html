@@ -37,7 +37,7 @@
    
     <div class="card">
         <h2>2. Оформить заказ (Запись в таблицу 'orders')</h2>
-        <form id="orderForm">
+        <form id="orderForm" onsubmit="submitOrder(event)">
             <div class="form-group">
                 <label>User ID (из таблицы users):</label>
                 <input type="number" name="user_id" value="1" required>
@@ -50,7 +50,16 @@
         </form>
     </div>
 </div>
-
+<!-- 3. Блок корзины -->
+    <div class="card" style="margin-top: 20px;">
+        <h2>3. Корзина покупок</h2>
+        <div id="cartItems">
+            <p>Корзина пуста</p>
+        </div>
+        <div id="cartTotal" style="font-weight: bold; margin-top: 10px; font-size: 1.1em; color: #0056b3;">
+            Итого: ₸ 0
+        </div>
+    </div>
 <script src="script.js"></script>
 </body>
 </html>

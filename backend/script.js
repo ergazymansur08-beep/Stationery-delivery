@@ -156,13 +156,22 @@ function removeFromCart(index) {
 async function submitOrder(event) {
     event.preventDefault();
 
-    const userId = document.querySelector('input[name="user_id"]').value;
-    const totalAmount = document.querySelector('input[name="total_amount"]').value;
-
     if (cart.length === 0) {
         alert("Корзина пуста! Добавьте товары перед оформлением заказа.");
         return;
     }
+
+    const userId = document.querySelector('input[name="user_id"]').value;
+    const totalAmount = document.querySelector('input[name="total_amount"]').value;
+
+    const payload = {
+        user_id: parseInt(userId, 10),
+        total_amount: parseFloat(totalAmount),
+        items: cart.map(item => ({
+            id: item.id,
+            quantity: item.quantity
+        }))
+    };
 
     try {
         const response = await fetch(`${API_URL}/orders`, {
@@ -170,19 +179,23 @@ async function submitOrder(event) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                user_id: parseInt(userId),
-                total_amount: parseFloat(totalAmount)
-            })
+            body: JSON.stringify(payload)
         });
 
         if (response.ok) {
-            alert("Заказ успешно оформлен и сохранен в базе данных Supabase! 🎉");
+            alert("Покупка оформлена! Остатки обновлены в Supabase.");
+
             cart = [];
             renderCart();
+
+            // Загружаем товары с актуальными остатками
+            await loadProducts();
         } else {
             const err = await response.json();
-            alert("Ошибка при оформлении заказа: " + (err.detail || "Неизвестная ошибка"));
+            alert(
+                "Ошибка при оформлении заказа: " +
+                (err.detail || "Неизвестная ошибка")
+            );
         }
     } catch (error) {
         console.error("Ошибка сети:", error);

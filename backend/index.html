@@ -40,11 +40,11 @@
         <form id="orderForm" onsubmit="submitOrder(event)">
             <div class="form-group">
                 <label>User ID (из таблицы users):</label>
-                <input type="number" name="user_id" value="1" required>
+                <input type="number" readonly name="user_id" value="1" required>
             </div>
             <div class="form-group">
                 <label>Total Amount(KzT):</label>
-                <input type="number" name="total_amount" value="1200" required>
+                <input type="number" name="total_amount" readonly value="1200" required>
             </div>
             <button type="submit" class="btn-submit">Оформить заказ (Insert)</button>
         </form>

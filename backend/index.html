@@ -46,7 +46,8 @@
                 <label>Total Amount(KzT):</label>
                 <input type="number" name="total_amount" readonly value="1200" required>
             </div>
-            <button type="submit" class="btn-submit">Оформить заказ (Insert)</button>
+            <button type="button" onclick="submitOrder()">Оформить заказ (Insert)</button>
+            <div id="order-status-msg" style="margin-top: 10px; font-weight: bold;"></div>
         </form>
     </div>
 </div>
@@ -60,6 +61,14 @@
             Итого: ₸ 0
         </div>
     </div>
+<div class="delivery-section" style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 8px;">
+    <h3>Выбор локации доставки в AITU</h3>
+    <select id="locationSelect" style="padding: 8px; width: 100%; max-width: 350px;">
+        <option value="">Загрузка локаций...</option>
+    </select>
+</div>
+<div id="order-status" style="margin-top: 10px; font-weight: bold; color: green;"></div>
+<div id="productsGrid"></div>
 <script src="script.js"></script>
 </body>
 </html>

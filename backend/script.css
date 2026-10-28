@@ -149,7 +149,7 @@ select {
 
 .btn-add:hover { background: #2b6cb0; }
 
-/* Карточки товаров в Корзине */
+
 .cart-items {
     display: flex;
     gap: 15px;

@@ -81,4 +81,11 @@ def create_order(order: OrderCreate):
             status_code=400,
             detail=f"He удалось обновить остатки. Проверь наличие товаров.: {str(e)}"
         )
+from fastapi import FastAPI
+# (и твой импорт подключения к Supabase)
+
+@app.get("/api/delivery-locations")
+def get_delivery_locations():
+    response = supabase.table("delivery_locations").select("*").execute()
+    return response.data
     

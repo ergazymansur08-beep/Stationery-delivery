@@ -39,15 +39,30 @@ function renderProducts(products) {
     }
 
     products.forEach(product => {
+        let imageUrl = "https://cdn-icons-png.flaticon.com/512/2543/2543279.png"; // Дефолт
+        
+        const productName = (product.name || "").toLowerCase();
+
+        if (productName.includes("notebook")) {
+            imageUrl = "https://cdn-icons-png.flaticon.com/512/3388/3388722.png";
+        } else if (productName.includes("pen")) {
+            imageUrl = "https://cdn-icons-png.flaticon.com/512/1250/1250615.png";
+        } else if (productName.includes("marker")) {
+            imageUrl = "https://cdn-icons-png.flaticon.com/512/2921/2921222.png";
+        }
+
         const card = document.createElement("div");
         card.className = "product-card";
         card.innerHTML = `
+            <div class="product-img-container">
+                <img src="${imageUrl}" alt="${product.name}">
+            </div>
             <h3>${product.name}</h3>
             <p>${product.description || ''}</p>
             <p><strong>Категория:</strong> ${product.category || 'Общее'}</p>
             <p><strong>В наличии:</strong> ${product.stock_quantity} шт.</p>
             <p class="price" style="font-weight: bold; color: #0056b3;">₸ ${product.price}</p>
-            <button onclick="addToCart(${product.id}, '${product.name}', ${product.price})" style="cursor: pointer; padding: 5px 10px;">+ В корзину</button>
+            <button class="btn-add" onclick="addToCart(${product.id}, '${product.name}', ${product.price})">+ В корзину</button>
         `;
         grid.appendChild(card);
     });
@@ -88,7 +103,7 @@ function addToCart(id, name, price) {
     } else {
         cart.push({ id, name, price, quantity: 1 });
     }
-    renderCart(); // Сразу перерисовываем корзину на экране
+    renderCart();
 }
 
 // 6. Отрисовка корзины покупок
@@ -130,7 +145,6 @@ function renderCart() {
         cartTotalContainer.textContent = `Итого: ₸ ${total}`;
     }
 
-    // Автоматически подставляем общую сумму в инпут формы заказа
     const totalInput = document.querySelector('input[name="total_amount"]');
     if (totalInput) {
         totalInput.value = total;
@@ -152,58 +166,103 @@ function removeFromCart(index) {
     renderCart();
 }
 
-// 9. Отправка заказа на бэкенд без перезагрузки страницы
-async function submitOrder(event) {
-    event.preventDefault();
-
-    if (cart.length === 0) {
-        alert("Корзина пуста! Добавьте товары перед оформлением заказа.");
-        return;
-    }
-
-    const userId = document.querySelector('input[name="user_id"]').value;
-    const totalAmount = document.querySelector('input[name="total_amount"]').value;
-
-    const payload = {
-        user_id: parseInt(userId, 10),
-        total_amount: parseFloat(totalAmount),
-        items: cart.map(item => ({
-            id: item.id,
-            quantity: item.quantity
-        }))
-    };
-
+// 9. Загрузка локаций доставки из базы данных в выпадающий список
+async function loadDeliveryLocations() {
     try {
-        const response = await fetch(`${API_URL}/orders`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
+        let response = await fetch(`${API_URL}/delivery-locations`);
+        let locations = await response.json();
+
+        const select = document.getElementById("locationSelect");
+        if (!select) return;
+        
+        select.innerHTML = "";
+
+        locations.forEach(loc => {
+            const option = document.createElement("option");
+            option.value = loc.id; // ID из таблицы delivery_locations
+            option.textContent = `Корпус ${loc.block} | Кабинет ${loc.room_number}`;
+            select.appendChild(option);
         });
-
-        if (response.ok) {
-            alert("Покупка оформлена! Остатки обновлены в Supabase.");
-
-            cart = [];
-            renderCart();
-
-            // Загружаем товары с актуальными остатками
-            await loadProducts();
-        } else {
-            const err = await response.json();
-            alert(
-                "Ошибка при оформлении заказа: " +
-                (err.detail || "Неизвестная ошибка")
-            );
-        }
     } catch (error) {
-        console.error("Ошибка сети:", error);
-        alert("Не удалось отправить заказ на сервер.");
+        console.error("Ошибка загрузки локаций:", error);
     }
 }
 
-// Автозапуск при загрузке страницы
+// Инициализация при загрузке страницы
 document.addEventListener("DOMContentLoaded", () => {
     loadProducts();
+    loadDeliveryLocations();
 });
+
+// 10. ФУНКЦИЯ ОТПРАВКИ ЗАКАЗА
+async function submitOrder(event) {
+    if (event) event.preventDefault(); // Предотвращаем перезагрузку страницы, если вызов из формы
+
+    const statusMsg = document.getElementById("order-status-msg");
+    if (statusMsg) statusMsg.textContent = "";
+
+    const userIdInput = document.querySelector('input[name="user_id"]');
+    const totalAmountInput = document.querySelector('input[name="total_amount"]');
+    const locationSelect = document.getElementById("locationSelect");
+
+    const userId = userIdInput ? parseInt(userIdInput.value) : 1;
+    
+    // Считаем сумму прямо из корзины для абсолютной точности
+    const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Считываем реальный ID выбранного кабинета (число)
+    const locationId = locationSelect && locationSelect.value ? parseInt(locationSelect.value) : 1;
+
+    // Проверка корзины
+    if (cart.length === 0) {
+        if (statusMsg) {
+            statusMsg.style.color = "red";
+            statusMsg.textContent = "✖ Корзина пуста! Добавьте товары перед заказом.";
+        }
+        return;
+    }
+
+    try {
+        // Подготавливаем товары строго по схеме бэкенда (id и quantity)
+        const orderPayload = {
+            user_id: userId,
+            total_amount: totalAmount,
+            location_id: locationId, // Передаем выбранный ID локации кабинета
+            items: cart.map(item => ({
+                id: item.id,
+                quantity: item.quantity
+            }))
+        };
+
+        let response = await fetch(`${API_URL}/orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderPayload)
+        });
+
+        let result = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+            if (statusMsg) {
+                statusMsg.style.color = "green";
+                statusMsg.textContent = "✔ Заказ успешно сохранен!";
+            }
+            cart = [];
+            renderCart();
+        } else {
+            let errorDetail = result.detail;
+            let errorText = typeof errorDetail === 'object' ? JSON.stringify(errorDetail) : (errorDetail || "Не удалось оформить заказ!");
+            if (statusMsg) {
+                statusMsg.style.color = "red";
+                statusMsg.textContent = "✖ Ошибка: " + errorText;
+            }
+        }
+
+    } catch (error) {
+        console.error("Ошибка связи с сервером:", error);
+        if (statusMsg) {
+            statusMsg.style.color = "red";
+            statusMsg.textContent = "✖ Ошибка соединения с сервером!";
+        }
+    }
+}

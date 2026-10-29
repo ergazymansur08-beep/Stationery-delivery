@@ -36,17 +36,66 @@
 
    
     <div class="card">
-        <h2>2. Оформить заказ (Запись в таблицу 'orders')</h2>
+        <h2>2. Выбрать локацию доставки (Интерактивная карта AITU(Пока что лишь 1 этаж))</h2>
+        
+        <!-- Контейнер для позиционирования кликабельных зон поверх картинки -->
+        <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 800px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
+            
+            <!-- Ваша PNG-картинка из Supabase Storage -->
+            <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/1stFloormb.png" alt="План 1 этажа AITU" id="aituMapImg" style="display: block; width: 100%; height: auto;">
+            
+            <!-- БЛОК C1.1 (Левое крыло) -->
+            <div class="map-room-zone" data-room="140" style="position: absolute; top: 22%; left: 30%; width: 4%; height: 6%;">140</div>
+            <div class="map-room-zone" data-room="143" style="position: absolute; top: 31%; left: 24%; width: 5%; height: 8%;">143</div>
+            <div class="map-room-zone" data-room="141" style="position: absolute; top: 31%; left: 29%; width: 4%; height: 6%;">141</div>
+            <div class="map-room-zone" data-room="142" style="position: absolute; top: 36%; left: 29%; width: 5%; height: 8%;">142</div>
+            <div class="map-room-zone" data-room="139" style="position: absolute; top: 22%; left: 27%; width: 4%; height: 6%;">139</div>
+
+            <div class="map-room-zone" data-room="155" style="position: absolute; top: 67%; left: 32%; width: 4%; height: 6%;">155</div>
+            <div class="map-room-zone" data-room="163" style="position: absolute; top: 63%; left: 32%; width: 4%; height: 3%;">163</div>
+            <div class="map-room-zone" data-room="164" style="position: absolute; top: 59%; left: 32%; width: 4%; height: 3%;">164</div>
+            <div class="map-room-zone" data-room="165" style="position: absolute; top: 59%; left: 26%; width: 5%; height: 8%;">165</div>
+            <div class="map-room-zone" data-room="168" style="position: absolute; top: 50%; left: 25%; width: 8%; height: 6%;">168</div>
+
+            <!-- БЛОК C1.2 (Центральное кольцо) -->
+            
+            <div class="map-room-zone" data-room="124K" style="position: absolute; top: 47%; left: 36%; width: 5%; height: 5%;">124K</div>
+            <div class="map-room-zone" data-room="123K" style="position: absolute; top: 54%; left: 36%; width: 5%; height: 5%;">123K</div>
+            <div class="map-room-zone" data-room="122K" style="position: absolute; top: 60%; left: 37%; width: 5%; height: 5%;">122K</div>
+            <div class="map-room-zone" data-room="121K" style="position: absolute; top: 66%; left: 37%; width: 5%; height: 5%;">121K</div>
+            
+            <div class="map-room-zone" data-room="139" style="position: absolute; top: 47%; left: 58%; width: 5%; height: 5%;">139</div>
+            <div class="map-room-zone" data-room="138L" style="position: absolute; top: 53%; left: 58%; width: 5%; height: 5%;">138L</div>
+            <div class="map-room-zone" data-room="137P" style="position: absolute; top: 59%; left: 58%; width: 5%; height: 5%;">137P</div>
+            <div class="map-room-zone" data-room="136" style="position: absolute; top: 64%; left: 57%; width: 5%; height: 5%;">136</div>
+            <div class="map-room-zone" data-room="135" style="position: absolute; top: 67%; left: 57%; width: 5%; height: 5%;">135</div>
+        </div>
+
+        <!-- Форма заказа -->
         <form id="orderForm" onsubmit="submitOrder(event)">
-            <div class="form-group">
-                <label>User ID (из таблицы users):</label>
-                <input type="number" readonly name="user_id" value="1" required>
+            <input type="hidden" name="user_id" value="1">
+            <input type="hidden" id="selectedLocationId" name="location_id" value="">
+            <input type="hidden" name="total_amount" value="0">
+
+            <div id="selectionStatusBlock" style="padding: 12px; background: #fff3cd; border: 1px solid #ffeeba; color: #856404; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; font-weight: bold; text-align: center;">
+                ⚠️ Пожалуйста, кликните на нужный кабинет на карте выше для оформления заказа.
             </div>
-            <div class="form-group">
-                <label>Total Amount(KzT):</label>
-                <input type="number" name="total_amount" readonly value="1200" required>
-            </div>
-            <button type="submit" class="btn-submit">Оформить заказ (Insert)</button>
+
+            <button type="submit" id="btnSubmitOrder" class="btn-submit" disabled style="cursor: not-allowed; padding: 10px 20px; width: 100%; font-size: 1.1em; font-weight: bold; border-radius: 4px; background: #6c757d; color: white; border: none; transition: background 0.3s;">
+                Оформить заказ
+            </button>
+        </form>
+        </div>
+        </div>
+
+        <!-- Форма заказа. Значения (location_id и total_amount) подставляются скриптом автоматически -->
+        <form id="orderForm" onsubmit="submitOrder(event)">
+            <!-- Скрытые технические поля для бэкенда -->
+            <input type="hidden" name="user_id" value="1">
+            <input type="hidden" id="selectedLocationId" name="location_id" value="">
+            <input type="hidden" name="total_amount" value="0">
+
+            <!-- Статус-блок уведомления пользователя -->
         </form>
     </div>
 </div>

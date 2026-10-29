@@ -41,13 +41,20 @@ function renderProducts(products) {
     products.forEach(product => {
         const card = document.createElement("div");
         card.className = "product-card";
+        
+        // Используем картинку из базы, либо дефолтную заглушку, если поле пустое
+        const imgUrl = product.image_url || "https://unsplash.com";
+
         card.innerHTML = `
+            <div class="product-img-container" style="text-align: center; margin-bottom: 10px;">
+                <img src="${imgUrl}" alt="${product.name}" style="max-width: 100%; height: 120px; object-fit: contain; border-radius: 4px;">
+            </div>
             <h3>${product.name}</h3>
             <p>${product.description || ''}</p>
             <p><strong>Категория:</strong> ${product.category || 'Общее'}</p>
             <p><strong>В наличии:</strong> ${product.stock_quantity} шт.</p>
             <p class="price" style="font-weight: bold; color: #0056b3;">₸ ${product.price}</p>
-            <button onclick="addToCart(${product.id}, '${product.name}', ${product.price})" style="cursor: pointer; padding: 5px 10px;">+ В корзину</button>
+            <button onclick="addToCart(${product.id}, '${product.name}', ${product.price}, '${imgUrl}')" style="cursor: pointer; padding: 5px 10px; width: 100%; border-radius: 4px; background-color: #0056b3; color: white; border: none;">+ В корзину</button>
         `;
         grid.appendChild(card);
     });
@@ -81,14 +88,15 @@ function filterProducts() {
 }
 
 // 5. Добавление товара в корзину
-function addToCart(id, name, price) {
+function addToCart(id, name, price, imageUrl) {
     const existing = cart.find(item => item.id === id);
     if (existing) {
         existing.quantity += 1;
     } else {
-        cart.push({ id, name, price, quantity: 1 });
+        // Добавляем поле image_url в объект товара внутри корзины
+        cart.push({ id, name, price, quantity: 1, image_url: imageUrl });
     }
-    renderCart(); // Сразу перерисовываем корзину на экране
+    renderCart(); // Перерисовываем корзину
 }
 
 // 6. Отрисовка корзины покупок
@@ -112,8 +120,12 @@ function renderCart() {
         total += itemTotal;
         
         html += `
-            <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 6px;">
-                <span><strong>${item.name}</strong> — ₸ ${item.price} × ${item.quantity} = <strong>₸ ${itemTotal}</strong></span>
+            <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <!-- Маленькая превьюшка товара в корзине -->
+                    <img src="${item.image_url}" alt="${item.name}" style="width: 40px; height: 40px; object-fit: contain; border-radius: 4px; border: 1px solid #ddd;">
+                    <span><strong>${item.name}</strong> — ₸ ${item.price} × ${item.quantity} = <strong>₸ ${itemTotal}</strong></span>
+                </div>
                 <div>
                     <button onclick="changeQuantity(${index}, 1)" style="padding: 2px 8px; cursor: pointer;">+</button>
                     <button onclick="changeQuantity(${index}, -1)" style="padding: 2px 8px; cursor: pointer;">-</button>
@@ -130,7 +142,6 @@ function renderCart() {
         cartTotalContainer.textContent = `Итого: ₸ ${total}`;
     }
 
-    // Автоматически подставляем общую сумму в инпут формы заказа
     const totalInput = document.querySelector('input[name="total_amount"]');
     if (totalInput) {
         totalInput.value = total;
@@ -156,24 +167,43 @@ function removeFromCart(index) {
 async function submitOrder(event) {
     event.preventDefault();
 
+    // 1. Проверяем корзину
     if (cart.length === 0) {
         alert("Корзина пуста! Добавьте товары перед оформлением заказа.");
         return;
     }
 
+    // 2. Получаем ID пользователя и выбранной аудитории
     const userId = document.querySelector('input[name="user_id"]').value;
-    const totalAmount = document.querySelector('input[name="total_amount"]').value;
+    const locationId = document.getElementById("selectedLocationId").value;
 
+    // 3. Проверяем выбор аудитории
+    if (!locationId) {
+        alert("Сначала выберите аудиторию на карте!");
+        return;
+    }
+
+    // 4. Формируем данные для отправки
     const payload = {
         user_id: parseInt(userId, 10),
-        total_amount: parseFloat(totalAmount),
+        location_id: parseInt(locationId, 10),
         items: cart.map(item => ({
             id: item.id,
             quantity: item.quantity
         }))
     };
 
+    // 5. Проверяем корректность ID
+    if (
+        !Number.isInteger(payload.user_id) ||
+        !Number.isInteger(payload.location_id)
+    ) {
+        alert("Ошибка: некорректный пользователь или адрес доставки.");
+        return;
+    }
+
     try {
+        // 6. Отправляем заказ на сервер
         const response = await fetch(`${API_URL}/orders`, {
             method: "POST",
             headers: {
@@ -182,28 +212,107 @@ async function submitOrder(event) {
             body: JSON.stringify(payload)
         });
 
-        if (response.ok) {
-            alert("Покупка оформлена! Остатки обновлены в Supabase.");
+        const result = await response.json();
 
+        if (response.ok) {
+            alert(
+                `Заказ №${result.order_id ?? ""} успешно оформлен!`
+            );
+
+            // 7. Очищаем корзину
             cart = [];
             renderCart();
 
-            // Загружаем товары с актуальными остатками
+            // 8. Обновляем товары и остатки
             await loadProducts();
+
         } else {
-            const err = await response.json();
             alert(
-                "Ошибка при оформлении заказа: " +
-                (err.detail || "Неизвестная ошибка")
+                "Ошибка оформления заказа: " +
+                (result.detail || "Неизвестная ошибка")
             );
         }
+
     } catch (error) {
-        console.error("Ошибка сети:", error);
-        alert("Не удалось отправить заказ на сервер.");
+        console.error("Ошибка оформления заказа:", error);
+        alert("Не удалось связаться с сервером. Проверь, запущен ли FastAPI.");
     }
 }
 
-// Автозапуск при загрузке страницы
+let allLocations = []; // Храним список аудиторий из Supabase
+
+// 1. Автоматическая загрузка локаций с бэкенда при старте страницы
+async function loadLocations() {
+    try {
+        const response = await fetch(`${API_URL}/locations`);
+        if (!response.ok) throw new Error("Не удалось получить локации");
+        allLocations = await response.json();
+        
+        console.log("Локации успешно загружены из Supabase:", allLocations);
+        
+        // Как только данные загрузились — вешаем обработчики кликов на карту
+        initMapClicks();
+    } catch (error) {
+        console.error("Ошибка при получении локаций:", error);
+    }
+}
+
+// 2. Инициализация кликов по карте (Слушатели событий)
+function initMapClicks() {
+    const zones = document.querySelectorAll(".map-room-zone");
+    const locationInput = document.getElementById("selectedLocationId");
+    const statusBlock = document.getElementById("selectionStatusBlock");
+    const submitBtn = document.getElementById("btnSubmitOrder");
+
+    if (!locationInput || !statusBlock || !submitBtn) {
+        console.error("Не найдены элементы формы доставки.");
+        return;
+    }
+
+    zones.forEach(zone => {
+        zone.addEventListener("click", () => {
+            const roomNumber = zone.dataset.room.trim();
+
+            const foundLocation = allLocations.find(loc =>
+                String(loc.room_number || "").trim().toLowerCase()
+                === roomNumber.toLowerCase()
+            );
+
+            if (!foundLocation) {
+                alert(
+                    `Кабинет "${roomNumber}" не найден в Supabase.`
+                );
+                console.warn("Доступные локации:", allLocations);
+                return;
+            }
+
+            // Сохраняем ID выбранной аудитории
+            locationInput.value = foundLocation.id;
+
+            // Отмечаем выбранную зону
+            zones.forEach(z => z.classList.remove("selected"));
+            zone.classList.add("selected");
+
+            // Показываем выбранный адрес
+            statusBlock.style.background = "#d4edda";
+            statusBlock.style.color = "#155724";
+            statusBlock.style.border = "1px solid #c3e6cb";
+
+            statusBlock.textContent =
+                `Выбрана аудитория: ${foundLocation.room_number}`;
+
+            // Разрешаем оформление заказа
+            submitBtn.disabled = false;
+            submitBtn.style.background = "#0056b3";
+            submitBtn.style.cursor = "pointer";
+
+            console.log("Выбрана локация:", foundLocation);
+        });
+    });
+}
+
+// 3. Модифицируем автозапуск страницы
 document.addEventListener("DOMContentLoaded", () => {
     loadProducts();
+    loadLocations(); // Запуск скачивания локаций
 });

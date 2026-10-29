@@ -3,6 +3,8 @@ const API_URL = "http://127.0.0.1:8000/api";
 
 let allProducts = [];
 let cart = []; // Массив для корзины
+const addToCartSound = new Audio("https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/sounds/woosh-sound-effect.mp3");
+addToCartSound.volume = 0.5;
 
 // 1. Загрузка товаров с бэкенда (FastAPI + Supabase)
 async function loadProducts() {
@@ -96,6 +98,12 @@ function addToCart(id, name, price, imageUrl) {
         // Добавляем поле image_url в объект товара внутри корзины
         cart.push({ id, name, price, quantity: 1, image_url: imageUrl });
     }
+
+    addToCartSound.currentTime = 0;
+
+    addToCartSound.play().catch(error => {
+        console.warn("Не удалось воспроизвести звук:", error);
+    });
     renderCart(); // Перерисовываем корзину
 }
 

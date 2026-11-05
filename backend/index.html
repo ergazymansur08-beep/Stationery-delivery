@@ -11,14 +11,26 @@
 <div class="container">
     
     <div class="header">
-    <img src="https://img.hhcdn.ru/employer-logo-round/3561512.jpeg" alt="AITU Logo" class="aitu-logo" height="100">
-    
-    <h1>StationaryHub</h1>
-    <p>Connected to the Cloudservice SupaBase</p> 
-</div>
-</div>
+        <img src="https://img.hhcdn.ru/employer-logo-round/3561512.jpeg" alt="AITU Logo" class="aitu-logo" height="100">
+        <h1>StationaryHub</h1>
+        <p>Connected to the Cloudservice SupaBase</p> 
+    </div>
 
-  
+    
+    <div id="userInfoContainer" style="padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 5px;">
+        <div id="registerInfoContainer" style="padding: 10px; background: #f8f9fa; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd;">
+            <h3>Регистрация нового пользователя</h3>
+            <input type="text" id="regFullName" placeholder="Ваше Имя" style="margin-bottom: 5px; display: block; width: 100%; max-width: 300px; padding: 5px;">
+            <input type="email" id="regEmail" placeholder="Email" style="margin-bottom: 5px; display: block; width: 100%; max-width: 300px; padding: 5px;">
+            <input type="password" id="regPassword" placeholder="Пароль" style="margin-bottom: 10px; display: block; width: 100%; max-width: 300px; padding: 5px;">
+            <button onclick="registerUser(document.getElementById('regEmail').value, document.getElementById('regPassword').value, document.getElementById('regFullName').value)" style="background: #28a745; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px;">Зарегистрироваться</button>
+        </div>
+        <input type="email" id="loginEmail" placeholder="Email (например, test@mail.kz)" style="padding: 5px; margin-right: 5px;">
+        <input type="password" id="loginPassword" placeholder="Пароль" style="padding: 5px; margin-right: 5px;">
+        <button onclick="loginUser(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value)" style="padding: 6px 12px; cursor: pointer;">Войти</button>
+    </div>
+
+    
     <div class="card">
         <h2>1. Каталог товаров (Чтение из базы и фильтрация)</h2>
         
@@ -35,40 +47,38 @@
     </div>
 
    
+    <div class="floor-selector" style="display: flex; gap: 10px; margin: 20px 0;">
+        <button class="floor-btn active" data-floor="1" onclick="switchFloor(1)" style="padding: 10px 15px; cursor: pointer;">1 Этаж</button>
+        <button class="floor-btn" data-floor="2" onclick="switchFloor(2)" style="padding: 10px 15px; cursor: pointer;">2 Этаж</button>
+        <button class="floor-btn" data-floor="3" onclick="switchFloor(3)" style="padding: 10px 15px; cursor: pointer;">3 Этаж</button>
+    </div>
+
+    
     <div class="card">
-        <h2>2. Выбрать локацию доставки (Интерактивная карта AITU(Пока что лишь 1 этаж))</h2>
+        <h2>2. Выбрать локацию доставки (Интерактивная карта AITU)</h2>
         
-       
-        <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 800px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
-            
-           
-            <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/1stFloormb.png" alt="План 1 этажа AITU" id="aituMapImg" style="display: block; width: 100%; height: auto;">
-            
-         
-            <div class="map-room-zone" data-room="140" style="position: absolute; top: 22%; left: 30%; width: 4%; height: 6%;">140</div>
-            <div class="map-room-zone" data-room="143" style="position: absolute; top: 31%; left: 24%; width: 5%; height: 8%;">143</div>
-            <div class="map-room-zone" data-room="141" style="position: absolute; top: 31%; left: 29%; width: 4%; height: 6%;">141</div>
-            <div class="map-room-zone" data-room="142" style="position: absolute; top: 36%; left: 29%; width: 5%; height: 8%;">142</div>
-            <div class="map-room-zone" data-room="139" style="position: absolute; top: 22%; left: 27%; width: 4%; height: 6%;">139</div>
+        
+        <div id="map-container-1" class="floor-map-block" style="display: block;">
+            <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 1000px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
+                <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/1stFloormb.png" alt="План 1 этажа AITU" style="display: block; width: 100%; height: auto;">
+                <div class="map-rooms-overlay" data-floor-overlay="1" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+            </div>
+        </div>
 
-            <div class="map-room-zone" data-room="155" style="position: absolute; top: 67%; left: 32%; width: 4%; height: 6%;">155</div>
-            <div class="map-room-zone" data-room="163" style="position: absolute; top: 63%; left: 32%; width: 4%; height: 3%;">163</div>
-            <div class="map-room-zone" data-room="164" style="position: absolute; top: 59%; left: 32%; width: 4%; height: 3%;">164</div>
-            <div class="map-room-zone" data-room="165" style="position: absolute; top: 59%; left: 26%; width: 5%; height: 8%;">165</div>
-            <div class="map-room-zone" data-room="168" style="position: absolute; top: 50%; left: 25%; width: 8%; height: 6%;">168</div>
+      
+        <div id="map-container-2" class="floor-map-block" style="display: none;">
+            <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 1000px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
+                <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/2nd%20Floor%20fxd.png" alt="План 2 этажа AITU" style="display: block; width: 100%; height: auto; filter: hue-rotate(90deg);">
+                <div class="map-rooms-overlay" data-floor-overlay="2" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+            </div>
+        </div>
 
-         
-            
-            <div class="map-room-zone" data-room="124K" style="position: absolute; top: 47%; left: 36%; width: 5%; height: 5%;">124K</div>
-            <div class="map-room-zone" data-room="123K" style="position: absolute; top: 54%; left: 36%; width: 5%; height: 5%;">123K</div>
-            <div class="map-room-zone" data-room="122K" style="position: absolute; top: 60%; left: 37%; width: 5%; height: 5%;">122K</div>
-            <div class="map-room-zone" data-room="121K" style="position: absolute; top: 66%; left: 37%; width: 5%; height: 5%;">121K</div>
-            
-            <div class="map-room-zone" data-room="139" style="position: absolute; top: 47%; left: 58%; width: 5%; height: 5%;">139</div>
-            <div class="map-room-zone" data-room="138L" style="position: absolute; top: 53%; left: 58%; width: 5%; height: 5%;">138L</div>
-            <div class="map-room-zone" data-room="137P" style="position: absolute; top: 59%; left: 58%; width: 5%; height: 5%;">137P</div>
-            <div class="map-room-zone" data-room="136" style="position: absolute; top: 64%; left: 57%; width: 5%; height: 5%;">136</div>
-            <div class="map-room-zone" data-room="135" style="position: absolute; top: 67%; left: 57%; width: 5%; height: 5%;">135</div>
+      
+        <div id="map-container-3" class="floor-map-block" style="display: none;">
+            <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 1000px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
+                <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/3rd%20Floor.png" alt="План 3 этажа AITU" style="display: block; width: 100%; height: auto; filter: hue-rotate(180deg);">
+                <div class="map-rooms-overlay" data-floor-overlay="3" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+            </div>
         </div>
 
      
@@ -85,21 +95,9 @@
                 Оформить заказ
             </button>
         </form>
-        </div>
-        </div>
-
-     
-        <form id="orderForm" onsubmit="submitOrder(event)">
-          
-            <input type="hidden" name="user_id" value="1">
-            <input type="hidden" id="selectedLocationId" name="location_id" value="">
-            <input type="hidden" name="total_amount" value="0">
-
-           
-        </form>
     </div>
-</div>
 
+   
     <div class="card" style="margin-top: 20px;">
         <h2>3. Корзина покупок</h2>
         <div id="cartItems">
@@ -109,11 +107,9 @@
             Итого: ₸ 0
         </div>
     </div>
-    <div id="userInfoContainer" style="padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 5px;">
-    <input type="email" id="loginEmail" placeholder="Email (например, test@mail.kz)">
-    <input type="password" id="loginPassword" placeholder="Пароль">
-    <button onclick="loginUser(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value)">Войти</button>
+
 </div>
+
 <script src="script.js"></script>
 </body>
 </html>

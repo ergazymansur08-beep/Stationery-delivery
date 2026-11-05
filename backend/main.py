@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import passlib.hash as _hash
+import bcrypt
 from pydantic import BaseModel, Field
 from supabase import create_client, Client
 
@@ -68,7 +68,10 @@ def register_user(user: UserRegister):
                 detail="Пользователь с таким email уже зарегистрирован"
             )
         
-        hashed_password = _hash.bcrypt.hash(user.password)
+        # Жестко обрезаем пароль до 72 байт, переводим в байты и хэшируем через чистый bcrypt
+        pwd_bytes = user.password.encode("utf-8")[:72]
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
         
         response = supabase.table("users").insert({
             "email": user.email,
@@ -85,61 +88,56 @@ def register_user(user: UserRegister):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Ошибка регистрации: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка сервера при регистрации")
+        print(f"Критическая ошибка регистрации: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
 
 @app.post("/api/login")
 def login_user(user: UserLogin):
     try:
-        # Проверяем, есть ли пользователь в таблице users
         response = supabase.table("users").select("*").eq("email", user.email).execute()
         
-        if response.data:
-            db_user = response.data[0]
-            return {
-                "message": "Успешный вход",
-                "user_id": db_user["id"],
-                "email": db_user["email"],
-                "full_name": db_user.get("full_name", "Student")
-            }
-        else:
-            # Если такого email нет в базе — автоматически регистрируем его прямо при входе!
-            new_user_res = supabase.table("users").insert({
-                "email": user.email,
-                "full_name": "Алихан", 
-                "role": "student"
-            }).execute()
+        if not response.data or len(response.data) == 0:
+            raise HTTPException(
+                status_code=401,
+                detail="Пользователь с таким email не найден"
+            )
             
-            new_user = new_user_res.data[0]
-            return {
-                "message": "Пользователь создан и вошел",
-                "user_id": new_user["id"],
-                "email": new_user["email"],
-                "full_name": new_user["full_name"]
-            }
+        db_user = response.data[0]
+        stored_password = db_user.get("password_hash") or db_user.get("password", "")
+        
+        password_valid = False
+        try:
+            # Обрезаем введенный пароль ровно так же, как при регистрации (до 72 байт)
+            pwd_bytes = user.password.encode("utf-8")[:72]
+            stored_bytes = stored_password.encode("utf-8")
+            
+            # Проверяем через bcrypt
+            password_valid = bcrypt.checkpw(pwd_bytes, stored_bytes)
+        except Exception as e:
+            print(f"Ошибка проверки хэша: {e}")
+            # Запасной вариант на случай старых тестовых паролей без хэша
+            password_valid = (stored_password == user.password)
+            
+        if not password_valid:
+            raise HTTPException(
+                status_code=401,
+                detail="Неверный пароль"
+            )
 
-    except Exception as e:
-        print(f"Ошибка входа: {e}")
-        # Железобетонная страховка: если база вдруг капризничает, возвращаем ID 1, чтобы сайт не падал
         return {
-            "message": "Вход по аварийному режиму",
-            "user_id": 1,
-            "email": user.email,
-            "full_name": "Алихан"
+            "message": "Успешный вход",
+            "user_id": db_user["id"],
+            "email": db_user["email"],
+            "full_name": db_user.get("full_name", "Student"),
+            "role": db_user.get("role", "student")
         }
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Ошибка входа: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка сервера при входе")
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Ошибка входа: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка сервера при входе")
+        print(f"Критическая ошибка входа: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
 
 # --- КАТАЛОГ И ЛОКАЦИИ ---

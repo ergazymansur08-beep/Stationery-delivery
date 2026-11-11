@@ -1,23 +1,39 @@
-const API_URL = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" 
-    ? "http://127.0.0.1:8000/api" 
+const API_URL = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+    ? "http://127.0.0.1:8000/api"
     : "/api";
 
 let allProducts = [];
-let cart = []; 
-let allLocations = []; 
+let cart = [];
+let allLocations = [];
 let selectedGlobalLocationId = null;
 let currentFloor = 1;
 
-const successSound = new Audio("https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/sounds/success.mp3.mp3");
+const PLACEHOLDER_IMG = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120"><rect width="100%" height="100%" fill="#eef2f5"/><text x="50%" y="50%" fill="#999" font-family="Arial" font-size="14" text-anchor="middle" dominant-baseline="middle">Нет фото</text></svg>'
+);
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+// ===================== ЗВУКИ =====================
+const SOUNDS_BASE = "https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/sounds/";
+const successSound = new Audio(SOUNDS_BASE + "success.mp3.mp3");
 successSound.volume = 0.6;
-const cartSoundUrl = "https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/sounds/woosh-sound-effect.mp3";
-const emptyCartSound = new Audio("https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/sounds/zvuk-nevernogo-otveta-sto-k-odnomu.mp3");
+const cartSoundUrl = SOUNDS_BASE + "woosh-sound-effect.mp3";
+const emptyCartSound = new Audio(SOUNDS_BASE + "zvuk-nevernogo-otveta-sto-k-odnomu.mp3");
 emptyCartSound.volume = 0.5;
-const logoutSound = new Audio("https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/sounds/simple_ui_10_normal.mp3");
+const logoutSound = new Audio(SOUNDS_BASE + "simple_ui_10_normal.mp3");
 logoutSound.volume = 0.5;
-const loginSound = new Audio("https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/sounds/7910faa0357665e.mp3");
+const loginSound = new Audio(SOUNDS_BASE + "7910faa0357665e.mp3");
 loginSound.volume = 0.5;
 
+// ===================== ВХОД / РЕГИСТРАЦИЯ =====================
 async function loginUser(email, password) {
     if (!email || !password) {
         alert("Введите email и пароль!");
@@ -31,7 +47,7 @@ async function loginUser(email, password) {
             body: JSON.stringify({ email, password })
         });
         const result = await response.json();
-        
+
         if (response.ok) {
             loginSound.currentTime = 0;
             loginSound.play().catch(err => console.log("Ошибка звука входа:", err));
@@ -39,11 +55,11 @@ async function loginUser(email, password) {
             localStorage.setItem("currentUserId", result.user_id);
             localStorage.setItem("currentUserName", result.full_name);
             localStorage.setItem("userRole", result.role || "student");
-            
+
             if (result.access_token) {
                 localStorage.setItem("token", result.access_token);
             }
-            
+
             setTimeout(() => {
                 const userRole = (result.role || "").toLowerCase().trim();
                 if (userRole === "administrator" || userRole === "admin") {
@@ -59,7 +75,7 @@ async function loginUser(email, password) {
         }
     } catch (err) {
         console.error("Ошибка входа:", err);
-        alert("Не удалось связаться с сервером. Проверьте запущен ли бэкенд!");
+        alert("Не удалось связаться с сервером.");
     }
 }
 
@@ -79,7 +95,8 @@ async function registerUser(email, password, fullName) {
         if (response.ok) {
             alert("Регистрация успешна! Теперь вы можете войти.");
         } else {
-            alert("Ошибка регистрации: " + (result.detail || "Не удалось зарегистрироваться"));
+            const detail = typeof result.detail === "string" ? result.detail : "Проверьте данные (пароль от 6 символов)";
+            alert("Ошибка регистрации: " + detail);
         }
     } catch (err) {
         console.error("Ошибка соединения:", err);
@@ -95,7 +112,7 @@ function updateUserUI() {
     if (userId && userContainer) {
         userContainer.innerHTML = `
             <div style="padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: green; font-weight: bold;">👤 ${userName} (ID: ${userId})</span>
+                <span style="color: green; font-weight: bold;">👤 ${escapeHtml(userName)} (ID: ${escapeHtml(userId)})</span>
                 <button onclick="logout()" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px;">Выйти</button>
             </div>
         `;
@@ -115,6 +132,7 @@ function logout() {
     }, 300);
 }
 
+// ===================== ТОВАРЫ =====================
 async function loadProducts() {
     const grid = document.getElementById("productsGrid");
     if (!grid) return;
@@ -122,12 +140,13 @@ async function loadProducts() {
     try {
         const response = await fetch(`${API_URL}/products`);
         if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
-        
+
         allProducts = await response.json();
-        renderProductsByFloor(currentFloor);
         populateFilter(allProducts);
+        renderProductsByFloor(currentFloor);
     } catch (error) {
         console.error("Ошибка при загрузке товаров:", error);
+        grid.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: red;'>Не удалось загрузить товары</p>";
     }
 }
 
@@ -137,24 +156,28 @@ function renderProducts(products) {
     grid.innerHTML = "";
 
     if (products.length === 0) {
-        grid.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>На этом этаже пока нет товаров</p>";
+        grid.innerHTML = "<p style='grid-column: 1/-1; text-align: center;'>Товаров не найдено</p>";
         return;
     }
 
     products.forEach(product => {
         const card = document.createElement("div");
         card.className = "product-card";
-        const imgUrl = product.image_url || "https://unsplash.com";
+        const imgUrl = product.image_url || PLACEHOLDER_IMG;
+        const inStock = (product.stock_quantity || 0) > 0;
 
         card.innerHTML = `
             <div style="text-align: center; margin-bottom: 10px;">
-                <img src="${imgUrl}" alt="${product.name}" style="max-width: 100%; height: 120px; object-fit: contain; border-radius: 4px;">
+                <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(product.name)}" style="max-width: 100%; height: 120px; object-fit: contain; border-radius: 4px;">
             </div>
-            <h3>${product.name}</h3>
-            <p>${product.description || ''}</p>
+            <h3>${escapeHtml(product.name)}</h3>
+            <p>${escapeHtml(product.description || "")}</p>
             <p><strong>В наличии:</strong> ${product.stock_quantity} шт.</p>
             <p class="price" style="font-weight: bold; color: #0056b3;">₸ ${product.price}</p>
-            <button onclick="addToCart(${product.id}, '${product.name}', ${product.price}, '${imgUrl}')" style="cursor: pointer; padding: 5px 10px; width: 100%; border-radius: 4px; background-color: #0056b3; color: white; border: none;">+ В корзину</button>
+            <button onclick="addToCart(${product.id})" ${inStock ? "" : "disabled"}
+                style="cursor: ${inStock ? "pointer" : "not-allowed"}; padding: 5px 10px; width: 100%; border-radius: 4px; background-color: ${inStock ? "#0056b3" : "#6c757d"}; color: white; border: none;">
+                ${inStock ? "+ В корзину" : "Нет в наличии"}
+            </button>
         `;
         grid.appendChild(card);
     });
@@ -167,8 +190,7 @@ function renderProductsByFloor(floor) {
 
     const selectedCategory = document.getElementById("productFilter")?.value || "all";
     if (selectedCategory !== "all") {
-        const filtered = productsToRender.filter(p => p.category === selectedCategory);
-        renderProducts(filtered);
+        renderProducts(productsToRender.filter(p => p.category === selectedCategory));
     } else {
         renderProducts(productsToRender);
     }
@@ -177,6 +199,7 @@ function renderProductsByFloor(floor) {
 function populateFilter(products) {
     const select = document.getElementById("productFilter");
     if (!select) return;
+    const previous = select.value;
     const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
     select.innerHTML = `<option value="all">Все товары</option>`;
     categories.forEach(cat => {
@@ -185,6 +208,7 @@ function populateFilter(products) {
         option.textContent = cat;
         select.appendChild(option);
     });
+    if (categories.includes(previous)) select.value = previous;
 }
 
 function filterProducts() {
@@ -194,31 +218,47 @@ function filterProducts() {
 function switchFloor(floor) {
     currentFloor = floor;
 
-    document.querySelectorAll('.floor-btn').forEach(btn => {
-        btn.classList.remove('active');
-        const targetFloor = parseInt(btn.dataset.floor, 10);
-        if (targetFloor === floor) {
-            btn.classList.add('active');
+    document.querySelectorAll(".floor-btn").forEach(btn => {
+        btn.classList.remove("active");
+        if (parseInt(btn.dataset.floor, 10) === floor) {
+            btn.classList.add("active");
         }
     });
 
-    document.querySelectorAll('.floor-map-block').forEach(mapBlock => {
-        mapBlock.style.display = 'none';
+    document.querySelectorAll(".floor-map-block").forEach(mapBlock => {
+        mapBlock.style.display = "none";
     });
     const activeMapBlock = document.getElementById(`map-container-${floor}`);
     if (activeMapBlock) {
-        activeMapBlock.style.display = 'block';
+        activeMapBlock.style.display = "block";
     }
 
     renderProductsByFloor(floor);
 }
 
-function addToCart(id, name, price, imageUrl) {
-    const existing = cart.find(item => item.id === id);
+// ===================== КОРЗИНА =====================
+function addToCart(productId) {
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    const existing = cart.find(item => item.id === productId);
+    const currentQty = existing ? existing.quantity : 0;
+
+    if (currentQty + 1 > (product.stock_quantity || 0)) {
+        alert(`Больше нет в наличии: «${product.name}» (осталось ${product.stock_quantity} шт.)`);
+        return;
+    }
+
     if (existing) {
         existing.quantity += 1;
     } else {
-        cart.push({ id, name, price, quantity: 1, image_url: imageUrl });
+        cart.push({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            image_url: product.image_url || ""
+        });
     }
     renderCart();
 
@@ -246,7 +286,7 @@ function renderCart() {
         html += `
             <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
                 <div>
-                    <strong>${item.name}</strong> — ₸ ${item.price} × ${item.quantity} = <strong>₸ ${itemTotal}</strong>
+                    <strong>${escapeHtml(item.name)}</strong> — ₸ ${item.price} × ${item.quantity} = <strong>₸ ${itemTotal}</strong>
                 </div>
                 <div>
                     <button onclick="changeQuantity(${index}, 1)">+</button>
@@ -263,8 +303,19 @@ function renderCart() {
 }
 
 function changeQuantity(index, delta) {
-    cart[index].quantity += delta;
-    if (cart[index].quantity <= 0) cart.splice(index, 1);
+    const item = cart[index];
+    if (!item) return;
+
+    if (delta > 0) {
+        const product = allProducts.find(p => p.id === item.id);
+        if (product && item.quantity + delta > (product.stock_quantity || 0)) {
+            alert(`Больше нет в наличии (осталось ${product.stock_quantity} шт.)`);
+            return;
+        }
+    }
+
+    item.quantity += delta;
+    if (item.quantity <= 0) cart.splice(index, 1);
     renderCart();
 }
 
@@ -283,37 +334,38 @@ async function submitOrder(event) {
         return;
     }
 
-    const userId = parseInt(localStorage.getItem("currentUserId"), 10);
-    if (!userId || isNaN(userId)) {
+    const token = localStorage.getItem("token");
+    if (!token) {
         alert("Пожалуйста, войдите в систему перед оформлением заказа!");
         return;
     }
 
-    const locationId = selectedGlobalLocationId;
-    if (!locationId) {
+    if (!selectedGlobalLocationId) {
         alert("Сначала выберите аудиторию на карте!");
         return;
     }
 
     const payload = {
-        user_id: userId,
-        location_id: locationId,
+        location_id: selectedGlobalLocationId,
         items: cart.map(item => ({ id: item.id, quantity: item.quantity }))
     };
 
     try {
         const response = await fetch(`${API_URL}/orders`, {
             method: "POST",
-            headers: { 
+            headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer " + localStorage.getItem("token")
+                "Authorization": "Bearer " + token
             },
             body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(JSON.stringify(errData.detail) || errData.message || "Ошибка сервера");
+            const errData = await response.json().catch(() => ({}));
+            const detail = typeof errData.detail === "string"
+                ? errData.detail
+                : (errData.message || "Ошибка сервера");
+            throw new Error(detail);
         }
 
         successSound.currentTime = 0;
@@ -330,6 +382,7 @@ async function submitOrder(event) {
 }
 
 // ===================== КАРТА =====================
+// Координаты кабинетов лежат в map-coords.js (ROOM_COORDS), ключ = id из таблицы delivery_locations
 const BLOCK_STYLE = {
     "C1.1": { rgb: "0,123,255",  zone: [6, 30]  },   // слева
     "C1.2": { rgb: "40,167,69",  zone: [36, 64] },   // центр
@@ -394,6 +447,8 @@ function renderAllDatabaseRooms() {
             position: absolute;
             left: ${pos[0]}%;
             top: ${pos[1]}%;
+            width: auto;
+            height: auto;
             transform: translate(-50%, -50%);
             background: rgba(${style.rgb}, ${placed ? 0.85 : 0.45});
             color: white;
@@ -478,7 +533,9 @@ function initCalibration() {
     function fillSelect(selectId) {
         const locs = allLocations
             .filter(l => (l.floor || 1) === currentFloor)
-            .sort((a, b) => String(a.block).localeCompare(String(b.block)) || String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true }));
+            .sort((a, b) =>
+                String(a.block).localeCompare(String(b.block)) ||
+                String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true }));
         select.innerHTML = "";
         locs.forEach(l => {
             const o = document.createElement("option");
@@ -543,139 +600,7 @@ function initCalibration() {
     buildOutput();
 }
 
-async function loadLocations() {
-    try {
-        const response = await fetch(`${API_URL}/locations`);
-        if (!response.ok) throw new Error("Не удалось получить локации");
-        allLocations = await response.json();
-        
-        renderAllDatabaseRooms();
-        initMapClicks();
-    } catch (error) {
-        console.error("Ошибка при получении локаций:", error);
-    }
-}
-
-function renderAllDatabaseRooms() {
-    document.querySelectorAll(".map-rooms-overlay").forEach(o => o.innerHTML = "");
-    
-    const wingCounters = {
-        "left": { 1: 0, 2: 0, 3: 0 },
-        "center": { 1: 0, 2: 0, 3: 0 },
-        "right": { 1: 0, 2: 0, 3: 0 }
-    };
-
-    allLocations.forEach((loc) => {
-        const floor = loc.floor || 1;
-        const overlay = document.querySelector(`.map-rooms-overlay[data-floor-overlay="${floor}"]`);
-        
-        if (!overlay) return;
-
-        const roomNum = String(loc.room_number || "").trim();
-        const roomEl = document.createElement("div");
-        roomEl.className = "map-room-zone";
-        roomEl.dataset.room = roomNum;
-        roomEl.textContent = roomNum;
-
-        let topPos = "20%";
-        let leftPos = "50%";
-
-        if (roomCoordinates[roomNum]) {
-            topPos = roomCoordinates[roomNum].top;
-            leftPos = roomCoordinates[roomNum].left;
-        } else {
-            let wing = "center";
-            const numVal = parseInt(roomNum, 10) || 0;
-            
-            if (numVal > 0 && numVal % 3 === 0) wing = "left";
-            else if (numVal > 0 && numVal % 3 === 1) wing = "right";
-
-            const wIdx = wingCounters[wing][floor]++;
-
-            if (wing === "left") {
-                const col = wIdx % 4;
-                const row = Math.floor(wIdx / 4);
-                topPos = `${32 + (row * 9)}%`;
-                leftPos = `${15 + (col * 7)}%`;
-            } else if (wing === "right") {
-                const col = wIdx % 4;
-                const row = Math.floor(wIdx / 4);
-                topPos = `${32 + (row * 9)}%`;
-                leftPos = `${72 + (col * 7)}%`;
-            } else {
-                const col = wIdx % 6;
-                const row = Math.floor(wIdx / 6);
-                topPos = `${24 + (row * 9)}%`;
-                leftPos = `${38 + (col * 5.5)}%`;
-            }
-        }
-
-        roomEl.style.cssText = `
-            position: absolute;
-            top: ${topPos};
-            left: ${leftPos};
-            background: rgba(0, 123, 255, 0.85);
-            color: white;
-            padding: 2px 4px;
-            font-size: 8.5px;
-            font-weight: bold;
-            border: 1px solid #fff;
-            border-radius: 3px;
-            cursor: pointer;
-            text-align: center;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-            transition: all 0.2s;
-            transform: translate(-50%, -50%);
-            white-space: nowrap;
-        `;
-
-        overlay.appendChild(roomEl);
-    });
-}
-
-function initMapClicks() {
-    const statusBlock = document.getElementById("selectionStatusBlock");
-    const submitBtn = document.getElementById("btnSubmitOrder");
-
-    document.addEventListener("click", (e) => {
-        if (!e.target.classList.contains("map-room-zone")) return;
-
-        const roomNumber = (e.target.dataset.room || "").trim();
-        const foundLocation = allLocations.find(loc =>
-            String(loc.room_number || "").trim().toLowerCase() === roomNumber.toLowerCase()
-        );
-
-        if (!foundLocation) {
-            alert(`Кабинет "${roomNumber}" не найден в базе.`);
-            return;
-        }
-
-        selectedGlobalLocationId = foundLocation.id;
-
-        document.querySelectorAll(".map-room-zone").forEach(z => {
-            z.classList.remove("selected");
-            z.style.background = "rgba(0, 123, 255, 0.85)";
-        });
-
-        e.target.classList.add("selected");
-        e.target.style.background = "#28a745"; 
-
-        if (statusBlock) {
-            statusBlock.style.background = "#d4edda";
-            statusBlock.style.color = "#155724";
-            statusBlock.textContent = `Выбрана аудитория: ${foundLocation.room_number} (Этаж ${foundLocation.floor}, Блок ${foundLocation.block || 'не указан'})`;
-        }
-
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.style.background = "#0056b3";
-            submitBtn.style.cursor = "pointer";
-        }
-    });
-}
-
-    
-
+// ===================== СТАРТ =====================
 document.addEventListener("DOMContentLoaded", () => {
     updateUserUI();
     loadProducts();

@@ -485,6 +485,76 @@ function initMapClicks() {
     });
 }
 
+    async function loadStock() {
+        const tbody = document.getElementById("stockTableBody");
+        try {
+            const response = await fetch(`${API_URL}/products`);
+            if (!response.ok) throw new Error("Ошибка загрузки товаров");
+            const products = await response.json();
+
+            tbody.innerHTML = "";
+            products.forEach(p => {
+                const tr = document.createElement("tr");
+
+                const tdName = document.createElement("td");
+                tdName.textContent = p.name;
+
+                const tdCur = document.createElement("td");
+                tdCur.textContent = `${p.stock_quantity} шт.`;
+
+                const tdAct = document.createElement("td");
+                tdAct.style.textAlign = "right";
+
+                const input = document.createElement("input");
+                input.type = "number";
+                input.min = "0";
+                input.value = p.stock_quantity;
+                input.style.cssText = "width: 90px; padding: 6px; margin-right: 8px; border: 1px solid #ccc; border-radius: 6px;";
+
+                const btn = document.createElement("button");
+                btn.className = "btn-complete";
+                btn.textContent = "Сохранить";
+                btn.onclick = () => saveStock(p.id, input, tdCur, btn);
+
+                tdAct.append(input, btn);
+                tr.append(tdName, tdCur, tdAct);
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            console.error(err);
+            tbody.innerHTML = `<tr><td colspan="3" class="empty-msg" style="color: red;">Не удалось загрузить товары.</td></tr>`;
+        }
+    }
+
+    async function saveStock(productId, input, curCell, btn) {
+        const value = parseInt(input.value, 10);
+        if (isNaN(value) || value < 0) {
+            alert("Введите целое число от 0");
+            return;
+        }
+        btn.disabled = true;
+        try {
+            const response = await fetch(`${API_URL}/products/${productId}/stock`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ stock_quantity: value })
+            });
+            if (!response.ok) throw new Error("Ошибка " + response.status);
+            const result = await response.json();
+            curCell.textContent = `${result.stock_quantity} шт.`;
+            btn.textContent = "✓ Сохранено";
+            setTimeout(() => { btn.textContent = "Сохранить"; }, 1500);
+        } catch (err) {
+            console.error(err);
+            alert("Не удалось сохранить количество");
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
 document.addEventListener("DOMContentLoaded", () => {
     updateUserUI();
     loadProducts();

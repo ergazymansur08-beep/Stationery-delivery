@@ -203,6 +203,12 @@
     ? "http://127.0.0.1:8000/api"
     : "/api";
 
+const token = localStorage.getItem("token");
+const role = (localStorage.getItem("userRole") || "").toLowerCase();
+if (!token || !["admin", "administrator"].includes(role)) {
+    window.location.href = "index.html";
+}
+
     function updateUserUI() {
         const userId = localStorage.getItem("currentUserId") || "18";
         const userName = localStorage.getItem("currentUserName") || "Alikhan";

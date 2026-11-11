@@ -232,4 +232,4 @@ def update_order_status(order_id: int, payload: StatusUpdate):
         supabase.table("orders").update({"status": payload.status}).eq("id", order_id).execute()
         return {"success": True}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))us_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))

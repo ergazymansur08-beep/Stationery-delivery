@@ -84,6 +84,7 @@ class UserLogin(BaseModel):
 class StatusUpdate(BaseModel):
     status: str
 
+
 class StockUpdate(BaseModel):
     stock_quantity: int = Field(ge=0, le=100000)
 
@@ -163,55 +164,6 @@ def get_locations():
     except Exception as e:
         print(f"Ошибка загрузки аудиторий: {e}")
         raise HTTPException(status_code=500, detail="Не удалось загрузить аудитории")
-
-
-@app.post("/api/orders")
-def create_order(order: OrderCreate, user=Depends(current_user)):
-    try:
-        items = [item.model_dump() for item in order.items]
-        product_ids = list({item["id"] for item in items})
-
-        products_response = (
-            supabase.table("products")
-            .select("id, price")
-            .in_("id", product_ids)
-            .execute()
-        )
-        products = {p["id"]: p["price"] for p in products_response.data}
-
-        if len(products) != len(product_ids):
-            raise HTTPException(status_code=400, detail="Один или несколько товаров не найдены")
-
-        order_response = (
-            supabase.table("orders")
-            .insert({
-                "user_id": user["id"],
-                "location_id": order.location_id,
-                "status": "pending",
-            })
-            .execute()
-        )
-        if not order_response.data:
-            raise HTTPException(status_code=500, detail="Не удалось создать заказ")
-
-        order_id = order_response.data[0]["id"]
-        order_items = [
-            {
-                "order_id": order_id,
-                "product_id": item["id"],
-                "quantity": item["quantity"],
-                "price_at_purchase": products[item["id"]],
-            }
-            for item in items
-        ]
-        supabase.table("order_items").insert(order_items).execute()
-
-        return {"success": True, "order_id": order_id, "message": "Заказ успешно оформлен"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Ошибка оформления заказа: {e}")
-        raise HTTPException(status_code=400, detail="Не удалось оформить заказ")
 
 
 @app.post("/api/orders")
@@ -298,6 +250,42 @@ def create_order(order: OrderCreate, user=Depends(current_user)):
         raise HTTPException(status_code=400, detail="Не удалось оформить заказ")
 
 
+@app.get("/api/orders")
+def get_orders(user=Depends(admin_only)):
+    try:
+        orders = supabase.table("orders").select("*").execute().data
+
+        for order in orders:
+            items_response = (
+                supabase.table("order_items")
+                .select("quantity, price_at_purchase, product_id, products(name)")
+                .eq("order_id", order["id"])
+                .execute()
+            )
+
+            formatted_items = []
+            for item in items_response.data or []:
+                prod_info = item.get("products")
+                prod_name = "Товар"
+                if isinstance(prod_info, dict):
+                    prod_name = prod_info.get("name", "Товар")
+                elif isinstance(prod_info, list) and prod_info:
+                    prod_name = prod_info[0].get("name", "Товар")
+
+                formatted_items.append({
+                    "product_name": prod_name,
+                    "quantity": item.get("quantity", 1),
+                    "price_at_purchase": item.get("price_at_purchase", 0),
+                })
+
+            order["items"] = formatted_items
+
+        return orders
+    except Exception as e:
+        print(f"Ошибка в get_orders: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка сервера")
+
+
 @app.patch("/api/orders/{order_id}/status")
 def update_order_status(order_id: int, payload: StatusUpdate, user=Depends(admin_only)):
     if payload.status not in ALLOWED_STATUSES:
@@ -308,6 +296,7 @@ def update_order_status(order_id: int, payload: StatusUpdate, user=Depends(admin
     except Exception as e:
         print(f"Ошибка смены статуса: {e}")
         raise HTTPException(status_code=500, detail="Ошибка сервера")
+
 
 @app.patch("/api/products/{product_id}/stock")
 def update_stock(product_id: int, payload: StockUpdate, user=Depends(admin_only)):

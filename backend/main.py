@@ -84,6 +84,9 @@ class UserLogin(BaseModel):
 class StatusUpdate(BaseModel):
     status: str
 
+class StockUpdate(BaseModel):
+    stock_quantity: int = Field(ge=0, le=100000)
+
 
 @app.post("/api/register")
 def register_user(user: UserRegister):
@@ -256,4 +259,22 @@ def update_order_status(order_id: int, payload: StatusUpdate, user=Depends(admin
         return {"success": True}
     except Exception as e:
         print(f"Ошибка смены статуса: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка сервера")
+
+@app.patch("/api/products/{product_id}/stock")
+def update_stock(product_id: int, payload: StockUpdate, user=Depends(admin_only)):
+    try:
+        result = (
+            supabase.table("products")
+            .update({"stock_quantity": payload.stock_quantity})
+            .eq("id", product_id)
+            .execute()
+        )
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+        return {"success": True, "stock_quantity": result.data[0]["stock_quantity"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Ошибка смены остатка: {e}")
         raise HTTPException(status_code=500, detail="Ошибка сервера")

@@ -1,21 +1,20 @@
 import os
+import time
 from pathlib import Path
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+
 import bcrypt
+import jwt
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from supabase import create_client, Client
+from supabase import Client, create_client
 
-env_path = Path(__file__).resolve().parent / ".env"
-load_dotenv(dotenv_path=env_path)
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
-# Ваши ключи Supabase
-SUPABASE_URL = "https://cyogeqswcxkwwztovqqw.supabase.co"
-SUPABASE_KEY = "sb_publishable_Ljx4nNjQIwUA18De7qhQhA_oT8wsi4R"
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("Укажи SUPABASE_URL и SUPABASE_ANON_KEY")
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_SECRET_KEY"]
+JWT_SECRET = os.environ["JWT_SECRET"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -23,116 +22,148 @@ app = FastAPI(title="StationeryHub API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешает запросы с любых доменов (включая Vercel)
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+ADMIN_ROLES = ("admin", "administrator")
+ALLOWED_STATUSES = {"pending", "Delivered", "completed", "cancelled"}
+
+
+def make_token(user: dict) -> str:
+    return jwt.encode(
+        {
+            "sub": str(user["id"]),
+            "role": user.get("role", "student"),
+            "exp": int(time.time()) + 8 * 3600,
+        },
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+
+
+def current_user(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Нужен вход")
+    try:
+        data = jwt.decode(authorization[7:], JWT_SECRET, algorithms=["HS256"])
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Недействительный токен")
+    return {"id": int(data["sub"]), "role": str(data["role"]).lower()}
+
+
+def admin_only(user=Depends(current_user)):
+    if user["role"] not in ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Только для администратора")
+    return user
+
+
 class CartItem(BaseModel):
     id: int
-    quantity: int = Field(gt=0)
+    quantity: int = Field(gt=0, le=100)
+
 
 class OrderCreate(BaseModel):
-    user_id: int
     location_id: int
     items: list[CartItem] = Field(min_length=1)
 
+
 class UserRegister(BaseModel):
-    email: str
-    password: str
-    full_name: str
+    email: str = Field(max_length=200)
+    password: str = Field(min_length=6, max_length=72)
+    full_name: str = Field(max_length=100)
+
 
 class UserLogin(BaseModel):
     email: str
     password: str
 
+
 class StatusUpdate(BaseModel):
     status: str
+
 
 @app.post("/api/register")
 def register_user(user: UserRegister):
     try:
-        existing = supabase.table("users").select("*").eq("email", user.email).execute()
+        existing = supabase.table("users").select("id").eq("email", user.email).execute()
         if existing.data:
             raise HTTPException(status_code=400, detail="Пользователь с таким email уже зарегистрирован")
-        
+
         pwd_bytes = user.password.encode("utf-8")[:72]
-        salt = bcrypt.gensalt()
-        hashed_password = bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
-        
+        hashed_password = bcrypt.hashpw(pwd_bytes, bcrypt.gensalt()).decode("utf-8")
+
         response = supabase.table("users").insert({
             "email": user.email,
             "password_hash": hashed_password,
             "full_name": user.full_name,
-            "role": "student"
+            "role": "student",
         }).execute()
-        
+
         if not response.data:
             raise HTTPException(status_code=400, detail="Ошибка регистрации в базе")
-            
-        return {"message": "Успешная регистрация", "user": response.data[0]}
+
+        return {"message": "Успешная регистрация"}
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Критическая ошибка регистрации: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
+        print(f"Ошибка регистрации: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка сервера")
+
 
 @app.post("/api/login")
 def login_user(user: UserLogin):
     try:
-        # Корректный запрос через .table("users") без ошибок путей PostgREST
         response = supabase.table("users").select("*").eq("email", user.email).execute()
-        
-        user_data = response.data
-        if not user_data or len(user_data) == 0:
-            raise HTTPException(status_code=401, detail="Пользователь с таким email не найден")
-            
-        db_user = user_data[0]
+        if not response.data:
+            raise HTTPException(status_code=401, detail="Неверный email или пароль")
+
+        db_user = response.data[0]
         stored_hash = db_user.get("password_hash")
-        
         if not stored_hash:
-            raise HTTPException(status_code=401, detail="Пароль не задан")
-            
+            raise HTTPException(status_code=401, detail="Неверный email или пароль")
+
         pwd_bytes = user.password.encode("utf-8")[:72]
-        
         if not bcrypt.checkpw(pwd_bytes, stored_hash.encode("utf-8")):
-            raise HTTPException(status_code=401, detail="Неверный пароль")
-            
+            raise HTTPException(status_code=401, detail="Неверный email или пароль")
+
         return {
             "message": "Успешный вход",
             "user_id": db_user["id"],
             "email": db_user["email"],
             "full_name": db_user.get("full_name", "User"),
             "role": db_user.get("role", "student"),
-            "access_token": f"token-{db_user['id']}"
+            "access_token": make_token(db_user),
         }
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Критическая ошибка входа: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
+        print(f"Ошибка входа: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка сервера")
+
 
 @app.get("/api/products")
 def get_products():
     try:
-        response = supabase.table("products").select("*").execute()
-        return response.data
+        return supabase.table("products").select("*").execute().data
     except Exception as e:
         print(f"Ошибка загрузки товаров: {e}")
         raise HTTPException(status_code=500, detail="Не удалось загрузить товары")
 
+
 @app.get("/api/locations")
 def get_locations():
     try:
-        response = supabase.table("delivery_locations").select("id, block, floor, room_number").execute()
-        return response.data
+        return supabase.table("delivery_locations").select("id, block, floor, room_number").execute().data
     except Exception as e:
         print(f"Ошибка загрузки аудиторий: {e}")
         raise HTTPException(status_code=500, detail="Не удалось загрузить аудитории")
 
+
 @app.post("/api/orders")
-def create_order(order: OrderCreate):
+def create_order(order: OrderCreate, user=Depends(current_user)):
     try:
         items = [item.model_dump() for item in order.items]
         product_ids = list({item["id"] for item in items})
@@ -143,11 +174,7 @@ def create_order(order: OrderCreate):
             .in_("id", product_ids)
             .execute()
         )
-
-        products = {
-            product["id"]: product["price"]
-            for product in products_response.data
-        }
+        products = {p["id"]: p["price"] for p in products_response.data}
 
         if len(products) != len(product_ids):
             raise HTTPException(status_code=400, detail="Один или несколько товаров не найдены")
@@ -155,81 +182,78 @@ def create_order(order: OrderCreate):
         order_response = (
             supabase.table("orders")
             .insert({
-                "user_id": order.user_id,
+                "user_id": user["id"],
                 "location_id": order.location_id,
-                "status": "pending"
+                "status": "pending",
             })
             .execute()
         )
-
         if not order_response.data:
             raise HTTPException(status_code=500, detail="Не удалось создать заказ")
 
         order_id = order_response.data[0]["id"]
-        order_items = []
-
-        for item in items:
-            prod_id = item["id"]
-            quantity = item["quantity"]
-            order_items.append({
+        order_items = [
+            {
                 "order_id": order_id,
-                "product_id": prod_id,
-                "quantity": quantity,
-                "price_at_purchase": products[prod_id]
-            })
-
+                "product_id": item["id"],
+                "quantity": item["quantity"],
+                "price_at_purchase": products[item["id"]],
+            }
+            for item in items
+        ]
         supabase.table("order_items").insert(order_items).execute()
 
-        return {
-            "success": True,
-            "order_id": order_id,
-            "message": "Заказ успешно оформлен"
-        }
+        return {"success": True, "order_id": order_id, "message": "Заказ успешно оформлен"}
     except HTTPException:
         raise
     except Exception as e:
         print(f"Ошибка оформления заказа: {e}")
-        raise HTTPException(status_code=400, detail=f"Не удалось оформить заказ: {str(e)}")
+        raise HTTPException(status_code=400, detail="Не удалось оформить заказ")
+
 
 @app.get("/api/orders")
-def get_orders():
+def get_orders(user=Depends(admin_only)):
     try:
-        orders_response = supabase.table("orders").select("*").execute()
-        orders = orders_response.data
-        
+        orders = supabase.table("orders").select("*").execute().data
+
         for order in orders:
-            items_response = supabase.table("order_items") \
-                .select("quantity, price_at_purchase, product_id, products(name)") \
-                .eq("order_id", order["id"]) \
+            items_response = (
+                supabase.table("order_items")
+                .select("quantity, price_at_purchase, product_id, products(name)")
+                .eq("order_id", order["id"])
                 .execute()
-            
+            )
+
             formatted_items = []
-            if items_response.data:
-                for item in items_response.data:
-                    prod_info = item.get("products")
-                    prod_name = "Товар"
-                    if isinstance(prod_info, dict):
-                        prod_name = prod_info.get("name", "Товар")
-                    elif isinstance(prod_info, list) and len(prod_info) > 0:
-                        prod_name = prod_info[0].get("name", "Товар")
-                        
-                    formatted_items.append({
-                        "product_name": prod_name,
-                        "quantity": item.get("quantity", 1),
-                        "price_at_purchase": item.get("price_at_purchase", 0)
-                    })
-            
+            for item in items_response.data or []:
+                prod_info = item.get("products")
+                prod_name = "Товар"
+                if isinstance(prod_info, dict):
+                    prod_name = prod_info.get("name", "Товар")
+                elif isinstance(prod_info, list) and prod_info:
+                    prod_name = prod_info[0].get("name", "Товар")
+
+                formatted_items.append({
+                    "product_name": prod_name,
+                    "quantity": item.get("quantity", 1),
+                    "price_at_purchase": item.get("price_at_purchase", 0),
+                })
+
             order["items"] = formatted_items
-            
+
         return orders
     except Exception as e:
         print(f"Ошибка в get_orders: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Ошибка сервера")
+
 
 @app.patch("/api/orders/{order_id}/status")
-def update_order_status(order_id: int, payload: StatusUpdate):
+def update_order_status(order_id: int, payload: StatusUpdate, user=Depends(admin_only)):
+    if payload.status not in ALLOWED_STATUSES:
+        raise HTTPException(status_code=400, detail="Недопустимый статус")
     try:
         supabase.table("orders").update({"status": payload.status}).eq("id", order_id).execute()
         return {"success": True}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Ошибка смены статуса: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка сервера")

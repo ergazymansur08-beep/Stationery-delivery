@@ -10,11 +10,12 @@ from supabase import create_client, Client
 env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+# Ваши ключи Supabase
+SUPABASE_URL = "https://cyogeqswcxkwwztovqqw.supabase.co"
+SUPABASE_KEY = "sb_publishable_Ljx4nNjQIwUA18De7qhQhA_oT8wsi4R"
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("Укажи SUPABASE_URL и SUPABASE_ANON_KEY в файле .env")
+    raise RuntimeError("Укажи SUPABASE_URL и SUPABASE_ANON_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -80,27 +81,31 @@ def register_user(user: UserRegister):
 @app.post("/api/login")
 def login_user(user: UserLogin):
     try:
+        # Корректный запрос через .table("users") без ошибок путей PostgREST
         response = supabase.table("users").select("*").eq("email", user.email).execute()
         
-        if not response.data or len(response.data) == 0:
+        user_data = response.data
+        if not user_data or len(user_data) == 0:
             raise HTTPException(status_code=401, detail="Пользователь с таким email не найден")
             
-        db_user = response.data[0]
-        stored_hash = db_user.get("password_hash", "")
+        db_user = user_data[0]
+        stored_hash = db_user.get("password_hash")
+        
+        if not stored_hash:
+            raise HTTPException(status_code=401, detail="Пароль не задан")
+            
         pwd_bytes = user.password.encode("utf-8")[:72]
         
-        if not stored_hash or not bcrypt.checkpw(pwd_bytes, stored_hash.encode("utf-8")):
+        if not bcrypt.checkpw(pwd_bytes, stored_hash.encode("utf-8")):
             raise HTTPException(status_code=401, detail="Неверный пароль")
-        
-        user_role = db_user.get("role", "student")
-
+            
         return {
             "message": "Успешный вход",
             "user_id": db_user["id"],
             "email": db_user["email"],
-            "full_name": db_user.get("full_name", "Student"),
-            "role": user_role,
-            "access_token": f"fake-jwt-token-for-user-{db_user['id']}"
+            "full_name": db_user.get("full_name", "User"),
+            "role": db_user.get("role", "student"),
+            "access_token": f"token-{db_user['id']}"
         }
     except HTTPException:
         raise
@@ -227,4 +232,4 @@ def update_order_status(order_id: int, payload: StatusUpdate):
         supabase.table("orders").update({"status": payload.status}).eq("id", order_id).execute()
         return {"success": True}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))us_code=500, detail=str(e))

@@ -214,40 +214,88 @@ def create_order(order: OrderCreate, user=Depends(current_user)):
         raise HTTPException(status_code=400, detail="Не удалось оформить заказ")
 
 
-@app.get("/api/orders")
-def get_orders(user=Depends(admin_only)):
-    try:
-        orders = supabase.table("orders").select("*").execute().data
+@app.post("/api/orders")
+def create_order(order: OrderCreate, user=Depends(current_user)):
+    # объединяем повторяющиеся товары
+    wanted: dict[int, int] = {}
+    for item in order.items:
+        wanted[item.id] = wanted.get(item.id, 0) + item.quantity
 
-        for order in orders:
-            items_response = (
-                supabase.table("order_items")
-                .select("quantity, price_at_purchase, product_id, products(name)")
-                .eq("order_id", order["id"])
+    try:
+        products_response = (
+            supabase.table("products")
+            .select("id, name, price, stock_quantity")
+            .in_("id", list(wanted.keys()))
+            .execute()
+        )
+        products = {p["id"]: p for p in products_response.data}
+
+        if len(products) != len(wanted):
+            raise HTTPException(status_code=400, detail="Один или несколько товаров не найдены")
+
+        for pid, qty in wanted.items():
+            p = products[pid]
+            if (p["stock_quantity"] or 0) < qty:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Недостаточно товара «{p['name']}» (осталось {p['stock_quantity']} шт.)",
+                )
+
+        # списание остатков (условие eq по старому значению защищает от гонки)
+        reserved = []
+
+        def rollback():
+            for rpid, old, new in reserved:
+                supabase.table("products").update({"stock_quantity": old}).eq("id", rpid).eq("stock_quantity", new).execute()
+
+        try:
+            for pid, qty in wanted.items():
+                old = products[pid]["stock_quantity"]
+                new = old - qty
+                res = (
+                    supabase.table("products")
+                    .update({"stock_quantity": new})
+                    .eq("id", pid)
+                    .eq("stock_quantity", old)
+                    .execute()
+                )
+                if not res.data:
+                    raise HTTPException(status_code=409, detail="Остатки изменились, попробуйте ещё раз")
+                reserved.append((pid, old, new))
+
+            order_response = (
+                supabase.table("orders")
+                .insert({
+                    "user_id": user["id"],
+                    "location_id": order.location_id,
+                    "status": "pending",
+                })
                 .execute()
             )
+            if not order_response.data:
+                raise HTTPException(status_code=500, detail="Не удалось создать заказ")
 
-            formatted_items = []
-            for item in items_response.data or []:
-                prod_info = item.get("products")
-                prod_name = "Товар"
-                if isinstance(prod_info, dict):
-                    prod_name = prod_info.get("name", "Товар")
-                elif isinstance(prod_info, list) and prod_info:
-                    prod_name = prod_info[0].get("name", "Товар")
+            order_id = order_response.data[0]["id"]
+            order_items = [
+                {
+                    "order_id": order_id,
+                    "product_id": pid,
+                    "quantity": qty,
+                    "price_at_purchase": products[pid]["price"],
+                }
+                for pid, qty in wanted.items()
+            ]
+            supabase.table("order_items").insert(order_items).execute()
+        except Exception:
+            rollback()
+            raise
 
-                formatted_items.append({
-                    "product_name": prod_name,
-                    "quantity": item.get("quantity", 1),
-                    "price_at_purchase": item.get("price_at_purchase", 0),
-                })
-
-            order["items"] = formatted_items
-
-        return orders
+        return {"success": True, "order_id": order_id, "message": "Заказ успешно оформлен"}
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Ошибка в get_orders: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка сервера")
+        print(f"Ошибка оформления заказа: {e}")
+        raise HTTPException(status_code=400, detail="Не удалось оформить заказ")
 
 
 @app.patch("/api/orders/{order_id}/status")

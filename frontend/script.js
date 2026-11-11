@@ -329,30 +329,219 @@ async function submitOrder(event) {
     }
 }
 
-const roomCoordinates = {
-    "139": { top: "22%", left: "27%" },
-    "140": { top: "22%", left: "30%" },
-    "141": { top: "31%", left: "29%" },
-    "142": { top: "36%", left: "29%" },
-    "143": { top: "31%", left: "24%" },
-    "155": { top: "67%", left: "32%" },
-    "163": { top: "63%", left: "32%" },
-    "164": { top: "59%", left: "32%" },
-    "165": { top: "59%", left: "26%" },
-    "168": { top: "50%", left: "25%" },
-    "124K": { top: "47%", left: "36%" },
-    "123K": { top: "54%", left: "36%" },
-    "122K": { top: "60%", left: "37%" },
-    "121K": { top: "66%", left: "37%" },
-    "138L": { top: "53%", left: "58%" },
-    "137P": { top: "59%", left: "58%" },
-    "136": { top: "64%", left: "57%" },
-    "135": { top: "67%", left: "57%" },
-    "221P": { top: "28%", left: "18%" },
-    "246": { top: "58%", left: "42%" },
-    "318K": { top: "28%", left: "22%" },
-    "346P": { top: "58%", left: "45%" }
+// ===================== КАРТА =====================
+const BLOCK_STYLE = {
+    "C1.1": { rgb: "0,123,255",  zone: [6, 30]  },   // слева
+    "C1.2": { rgb: "40,167,69",  zone: [36, 64] },   // центр
+    "C1.3": { rgb: "230,126,34", zone: [70, 94] },   // справа
+    "default": { rgb: "108,117,125", zone: [6, 94] }
 };
+const CALIBRATE = new URLSearchParams(location.search).has("calibrate");
+let calibData = {};
+try { calibData = JSON.parse(localStorage.getItem("roomCalib") || "{}"); } catch (e) {}
+
+function getCoords(loc) {
+    if (CALIBRATE && calibData[loc.id]) return calibData[loc.id];
+    if (typeof ROOM_COORDS !== "undefined" && ROOM_COORDS[loc.id]) return ROOM_COORDS[loc.id];
+    return null;
+}
+
+async function loadLocations() {
+    try {
+        const response = await fetch(`${API_URL}/locations`);
+        if (!response.ok) throw new Error("Не удалось получить локации");
+        allLocations = await response.json();
+
+        renderAllDatabaseRooms();
+        initMapClicks();
+        if (CALIBRATE) initCalibration();
+    } catch (error) {
+        console.error("Ошибка при получении локаций:", error);
+    }
+}
+
+function renderAllDatabaseRooms() {
+    document.querySelectorAll(".map-rooms-overlay").forEach(o => o.innerHTML = "");
+    const counters = {};
+
+    allLocations.forEach(loc => {
+        const floor = loc.floor || 1;
+        const overlay = document.querySelector(`.map-rooms-overlay[data-floor-overlay="${floor}"]`);
+        if (!overlay) return;
+
+        const style = BLOCK_STYLE[loc.block] || BLOCK_STYLE["default"];
+        let pos = getCoords(loc);
+        const placed = !!pos;
+
+        if (!pos) {
+            // автосетка для кабинетов без координат
+            const key = floor + "|" + loc.block;
+            const n = counters[key] = (counters[key] ?? -1) + 1;
+            const cols = 5;
+            const step = (style.zone[1] - style.zone[0]) / cols;
+            pos = [style.zone[0] + (n % cols) * step + step / 2, 6 + Math.floor(n / cols) * 4.5];
+        }
+
+        const roomNum = String(loc.room_number || "").trim();
+        const el = document.createElement("div");
+        el.className = "map-room-zone";
+        el.dataset.id = loc.id;
+        el.dataset.rgb = style.rgb;
+        el.textContent = roomNum;
+        el.title = `${loc.block}, этаж ${floor}, кабинет ${roomNum}` + (placed ? "" : " (нет координат)");
+
+        el.style.cssText = `
+            position: absolute;
+            left: ${pos[0]}%;
+            top: ${pos[1]}%;
+            transform: translate(-50%, -50%);
+            background: rgba(${style.rgb}, ${placed ? 0.85 : 0.45});
+            color: white;
+            padding: 2px 4px;
+            font-size: 8.5px;
+            font-weight: bold;
+            border: 1px ${placed ? "solid" : "dashed"} #fff;
+            border-radius: 3px;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            white-space: nowrap;
+        `;
+        overlay.appendChild(el);
+    });
+
+    // подсветить ранее выбранный кабинет
+    if (selectedGlobalLocationId) {
+        const sel = document.querySelector(`.map-room-zone[data-id="${selectedGlobalLocationId}"]`);
+        if (sel) { sel.classList.add("selected"); sel.style.background = "#28a745"; }
+    }
+}
+
+function initMapClicks() {
+    const statusBlock = document.getElementById("selectionStatusBlock");
+    const submitBtn = document.getElementById("btnSubmitOrder");
+
+    document.addEventListener("click", (e) => {
+        if (CALIBRATE) return;
+        const zone = e.target.closest(".map-room-zone");
+        if (!zone) return;
+
+        const loc = allLocations.find(l => String(l.id) === zone.dataset.id);
+        if (!loc) {
+            alert("Кабинет не найден в базе.");
+            return;
+        }
+
+        selectedGlobalLocationId = loc.id;
+
+        document.querySelectorAll(".map-room-zone").forEach(z => {
+            z.classList.remove("selected");
+            z.style.background = `rgba(${z.dataset.rgb}, 0.85)`;
+        });
+        zone.classList.add("selected");
+        zone.style.background = "#28a745";
+
+        if (statusBlock) {
+            statusBlock.style.background = "#d4edda";
+            statusBlock.style.color = "#155724";
+            statusBlock.textContent = `Выбрана аудитория: ${loc.room_number} (Блок ${loc.block}, Этаж ${loc.floor})`;
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.background = "#0056b3";
+            submitBtn.style.cursor = "pointer";
+        }
+    });
+}
+
+// ===================== РЕЖИМ КАЛИБРОВКИ (index.html?calibrate=1) =====================
+function initCalibration() {
+    const panel = document.createElement("div");
+    panel.style.cssText = "position:fixed;right:10px;bottom:10px;width:330px;background:#fff;border:2px solid #0056b3;border-radius:8px;padding:10px;z-index:9999;font-size:13px;box-shadow:0 4px 15px rgba(0,0,0,.3);";
+    panel.innerHTML = `
+        <b>Калибровка карты</b><br>
+        1) Выберите кабинет в списке<br>
+        2) Кликните на его место на карте<br>
+        <select id="calibSelect" style="width:100%;margin:6px 0;padding:4px;"></select>
+        <textarea id="calibOut" readonly style="width:100%;height:110px;font-size:11px;"></textarea>
+        <button id="calibCopy" style="padding:4px 8px;">Копировать</button>
+        <button id="calibReset" style="padding:4px 8px;">Сбросить мои клики</button>
+        <div style="margin-top:4px;color:#666;">Вставьте результат в ROOM_COORDS внутри map-coords.js</div>
+    `;
+    document.body.appendChild(panel);
+
+    const select = document.getElementById("calibSelect");
+    const out = document.getElementById("calibOut");
+
+    function hasCoords(loc) { return !!getCoords(loc); }
+
+    function fillSelect(selectId) {
+        const locs = allLocations
+            .filter(l => (l.floor || 1) === currentFloor)
+            .sort((a, b) => String(a.block).localeCompare(String(b.block)) || String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true }));
+        select.innerHTML = "";
+        locs.forEach(l => {
+            const o = document.createElement("option");
+            o.value = l.id;
+            o.textContent = `${hasCoords(l) ? "✓" : "○"} ${l.block} — ${l.room_number} (id ${l.id})`;
+            select.appendChild(o);
+        });
+        if (selectId) select.value = selectId;
+    }
+
+    function buildOutput() {
+        const merged = {};
+        if (typeof ROOM_COORDS !== "undefined") Object.assign(merged, ROOM_COORDS);
+        Object.assign(merged, calibData);
+        out.value = Object.keys(merged).map(Number).sort((a, b) => a - b).map(id => {
+            const loc = allLocations.find(l => l.id === id);
+            return `    ${id}: [${merged[id][0]}, ${merged[id][1]}], // ${loc ? loc.block + " " + loc.room_number : ""}`;
+        }).join("\n");
+    }
+
+    function nextUnplaced(currentId) {
+        const opts = [...select.options].map(o => o.value);
+        const start = opts.indexOf(String(currentId));
+        for (let i = 1; i <= opts.length; i++) {
+            const id = opts[(start + i) % opts.length];
+            const loc = allLocations.find(l => String(l.id) === id);
+            if (loc && !hasCoords(loc)) return id;
+        }
+        return String(currentId);
+    }
+
+    document.querySelectorAll(".map-rooms-overlay").forEach(ov => {
+        ov.addEventListener("click", (e) => {
+            const id = select.value;
+            if (!id) return;
+            const r = ov.getBoundingClientRect();
+            if (!r.width) return;
+            const x = +(((e.clientX - r.left) / r.width) * 100).toFixed(1);
+            const y = +(((e.clientY - r.top) / r.height) * 100).toFixed(1);
+            calibData[id] = [x, y];
+            try { localStorage.setItem("roomCalib", JSON.stringify(calibData)); } catch (err) {}
+            renderAllDatabaseRooms();
+            fillSelect(id);
+            const nxt = nextUnplaced(id);
+            fillSelect(nxt);
+            buildOutput();
+        });
+    });
+
+    document.querySelectorAll(".floor-btn").forEach(b =>
+        b.addEventListener("click", () => setTimeout(() => fillSelect(), 0)));
+
+    document.getElementById("calibCopy").onclick = () => { out.select(); document.execCommand("copy"); };
+    document.getElementById("calibReset").onclick = () => {
+        if (!confirm("Удалить все клики калибровки из браузера?")) return;
+        calibData = {};
+        try { localStorage.removeItem("roomCalib"); } catch (err) {}
+        renderAllDatabaseRooms(); fillSelect(); buildOutput();
+    };
+
+    fillSelect();
+    buildOutput();
+}
 
 async function loadLocations() {
     try {

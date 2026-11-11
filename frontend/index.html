@@ -3,311 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stationery Hub — Orders Admin</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 30px 20px;
-            color: #333;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        /* Синяя шапка */
-        .header-banner {
-            background: linear-gradient(135deg, #006458, #2c8278);
-            border-radius: 16px;
-            padding: 25px 35px;
-            color: white;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .header-logo {
-            background: white;
-            border-radius: 50%;
-            width: 65px;
-            height: 65px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-        .header-logo img {
-            width: 48px;
-            height: 48px;
-            object-fit: contain;
-        }
-        .header-text h1 {
-            margin: 0;
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-        .header-text p {
-            margin: 4px 0 0 0;
-            font-size: 14px;
-            color: #d0e1fd;
-            font-weight: 400;
-        }
-        /* Блок пользователя */
-        .user-bar {
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        .btn-logout {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 4px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: normal;
-        }
-
-        /* Заголовок страницы */
-        .title-orders {
-            font-size: 34px;
-            font-weight: 900;
-            letter-spacing: 1.5px;
-            color: #1e3c72;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-        }
-
-        /* Карточка с таблицей */
-        .card {
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            padding: 25px;
-            border: 1px solid #e1e8ed;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 15px 12px;
-            text-align: left;
-            border-bottom: 1px solid #eef2f5;
-        }
-        th {
-            color: #7f8c8d;
-            font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-        }
-        .order-num {
-            font-weight: bold;
-            color: #1e3c72;
-            font-size: 16px;
-        }
-        .user-id {
-            color: #555;
-            font-size: 15px;
-        }
-        .items-list {
-            margin: 0;
-            padding-left: 18px;
-            color: #444;
-            font-size: 14px;
-        }
-        .items-list li {
-            margin-bottom: 4px;
-        }
-        .btn-complete {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: background 0.2s;
-        }
-        .btn-complete:hover {
-            background-color: #218838;
-        }
-        .empty-msg {
-            text-align: center;
-            padding: 20px;
-            color: #888;
-            font-size: 16px;
-        }
-    </style>
+    <title>StationaryHub — Каталог</title>
+    <link rel="stylesheet" href="script.css">
 </head>
 <body>
 
 <div class="container">
-    <!-- Шапка -->
-    <div class="header-banner">
-        <div class="header-logo">
-            <img src="https://img.hhcdn.ru/employer-logo-round/3561512.jpeg" alt="AITU Logo" onerror="this.src='https://via.placeholder.com/50'">
+    
+    <div class="header">
+        <img src="https://img.hhcdn.ru/employer-logo-round/3561512.jpeg" alt="AITU Logo" class="aitu-logo" height="100">
+        <h1>StationaryHub</h1>
+        <p>Connected to the Cloudservice SupaBase</p> 
+    </div>
+
+    <!-- БЛОК АВТОРИЗАЦИИ И РЕГИСТРАЦИИ -->
+    <div id="userInfoContainer" style="padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 5px;">
+        
+        <!-- Форма регистрации -->
+        <div id="registerInfoContainer" style="padding: 10px; background: #f8f9fa; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd;">
+            <h3>Регистрация нового пользователя</h3>
+            <form onsubmit="event.preventDefault(); registerUser(document.getElementById('regEmail').value.trim(), document.getElementById('regPassword').value.trim(), document.getElementById('regFullName').value.trim());">
+                <input type="text" id="regFullName" placeholder="Ваше Имя" style="margin-bottom: 5px; display: block; width: 100%; max-width: 300px; padding: 5px;" required>
+                <input type="email" id="regEmail" placeholder="Email" style="margin-bottom: 5px; display: block; width: 100%; max-width: 300px; padding: 5px;" required>
+                <input type="password" id="regPassword" placeholder="Пароль" style="margin-bottom: 10px; display: block; width: 100%; max-width: 300px; padding: 5px;" required>
+                <button type="submit" style="background: #28a745; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px;">Зарегистрироваться</button>
+            </form>
         </div>
-        <div class="header-text">
-            <h1>StationeryHub</h1>
-            <p>Connected to the Cloudservice SupaBase</p>
+
+        <!-- Форма входа -->
+        <div style="display: flex; gap: 5px; align-items: center; flex-wrap: wrap;">
+            <input type="email" id="loginEmail" placeholder="Email (например, alihan@example.com)" style="padding: 5px;" required>
+            <input type="password" id="loginPassword" placeholder="Пароль" style="padding: 5px;" required>
+            <button type="button" onclick="loginUser(document.getElementById('loginEmail').value.trim(), document.getElementById('loginPassword').value.trim())" style="padding: 6px 12px; cursor: pointer; background: #0056b3; color: white; border: none; border-radius: 4px;">Войти</button>
         </div>
     </div>
 
-    <!-- Инфо о вошедшем админе -->
-    <div class="user-bar" id="userInfoContainer">
-        <span>👤 Alikhan (ID: 18)</span>
-        <button class="btn-logout" onclick="logout()">Выйти</button>
-    </div>
-
-    <!-- Раздел заказов -->
-    <div class="title-orders">Orders</div>
-
+    <!-- КАТАЛОГ ТОВАРОВ -->
     <div class="card">
-        <table>
-            <thead>
-                <tr>
-                    <th>Order Num</th>
-                    <th>User ID</th>
-                    <th>Товары</th>
-                    <th style="text-align: right;">Action</th>
-                </tr>
-            </thead>
-            <tbody id="ordersTableBody">
-                <tr>
-                    <td colspan="4" class="empty-msg">Загрузка реальных заказов из базы...</td>
-                </tr>
-            </tbody>
-        </table>
+        <h2>Каталог товаров (Чтение из базы и фильтрация)</h2>
+        
+        <div class="filter-group">
+            <label for="productFilter">Выберите товар для отображения:</label>
+            <select id="productFilter" onchange="filterProducts()">
+                <option value="all">Все товары (Показать всё)</option>
+            </select>
+        </div>
+
+        <div class="products-grid" id="productsGrid">
+            <p class="loading">Загрузка товаров из базы данных...</p>
+        </div>
     </div>
+
+    <!-- ПЕРЕКЛЮЧАТЕЛЬ ЭТАЖЕЙ -->
+    <div class="floor-selector" style="display: flex; gap: 10px; margin: 20px 0;">
+        <button class="floor-btn active" data-floor="1" onclick="switchFloor(1)" style="padding: 10px 15px; cursor: pointer;">1 Этаж</button>
+        <button class="floor-btn" data-floor="2" onclick="switchFloor(2)" style="padding: 10px 15px; cursor: pointer;">2 Этаж</button>
+        <button class="floor-btn" data-floor="3" onclick="switchFloor(3)" style="padding: 10px 15px; cursor: pointer;">3 Этаж</button>
+    </div>
+
+    <!-- ИНТЕРАКТИВНАЯ КАРТА AITU -->
+    <div class="card">
+        <h2>2. Выбрать локацию доставки (Интерактивная карта AITU)</h2>
+        
+        <!-- Этаж 1 -->
+        <div id="map-container-1" class="floor-map-block" style="display: block;">
+            <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 1000px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
+                <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/1stFloormb.png" alt="План 1 этажа AITU" style="display: block; width: 100%; height: auto;">
+                <div class="map-rooms-overlay" data-floor-overlay="1" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- Этаж 2 -->
+        <div id="map-container-2" class="floor-map-block" style="display: none;">
+            <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 1000px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
+                <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/2nd%20Floor%20fxd.png" alt="План 2 этажа AITU" style="display: block; width: 100%; height: auto; filter: hue-rotate(90deg);">
+                <div class="map-rooms-overlay" data-floor-overlay="2" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- Этаж 3 -->
+        <div id="map-container-3" class="floor-map-block" style="display: none;">
+            <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 1000px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
+                <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/3rd%20Floor.png" alt="План 3 этажа AITU" style="display: block; width: 100%; height: auto; filter: hue-rotate(180deg);">
+                <div class="map-rooms-overlay" data-floor-overlay="3" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- ФОРМА ЗАКАЗА -->
+        <form id="orderForm" onsubmit="submitOrder(event)">
+            <input type="hidden" id="selectedLocationId" name="location_id" value="">
+
+            <div id="selectionStatusBlock" style="padding: 12px; background: #fff3cd; border: 1px solid #ffeeba; color: #856404; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; font-weight: bold; text-align: center;">
+                ⚠️ Пожалуйста, кликните на нужный кабинет на карте выше для оформления заказа.
+            </div>
+
+            <button type="submit" id="btnSubmitOrder" class="btn-submit" disabled style="cursor: not-allowed; padding: 10px 20px; width: 100%; font-size: 1.1em; font-weight: bold; border-radius: 4px; background: #6c757d; color: white; border: none; transition: background 0.3s;">
+                Оформить заказ
+            </button>
+        </form>
+    </div>
+
+    <!-- КОРЗИНА ПОКУПОК -->
+    <div class="card" style="margin-top: 20px;">
+        <h2>3. Корзина покупок</h2>
+        <div id="cartItems">
+            <p>Корзина пуста</p>
+        </div>
+        <div id="cartTotal" style="font-weight: bold; margin-top: 10px; font-size: 1.1em; color: #0056b3;">
+            Итого: ₸ 0
+        </div>
+    </div>
+
 </div>
 
-<script>
-    const API_URL = "http://127.0.0.1:8000/api";
-
-    function updateUserUI() {
-        const userId = localStorage.getItem("currentUserId") || "18";
-        const userName = localStorage.getItem("currentUserName") || "Alikhan";
-        const userContainer = document.getElementById("userInfoContainer");
-
-        if (userContainer) {
-            userContainer.innerHTML = `
-                <span>👤 ${userName} (ID: ${userId})</span>
-                <button class="btn-logout" onclick="logout()">Выйти</button>
-            `;
-        }
-    }
-
-    function logout() {
-        localStorage.removeItem("currentUserId");
-        localStorage.removeItem("currentUserName");
-        localStorage.removeItem("userRole");
-        window.location.href = "index.html";
-    }
-
-    // Загрузка настоящих заказов с бэкенда
-    async function loadAdminOrders() {
-        const tbody = document.getElementById("ordersTableBody");
-        try {
-            const response = await fetch(`${API_URL}/orders`);
-            if (!response.ok) throw new Error("Ошибка загрузки заказов с сервера");
-            
-            const orders = await response.json();
-            
-            // Фильтруем: показываем только те заказы, которые еще не доставлены/не завершены
-            const activeOrders = orders.filter(o => o.status !== "Delivered" && o.status !== "completed");
-
-            if (activeOrders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="empty-msg">Активных заказов нет 🎉</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = "";
-            activeOrders.forEach(order => {
-                const tr = document.createElement("tr");
-                
-                // Формируем список купленных товаров из базы
-                let itemsHtml = "<ul class='items-list'>";
-                if (order.items && order.items.length > 0) {
-                    order.items.forEach(item => {
-                        // Подтягиваем название товара и его количество
-                        const name = item.product_name || item.name || `Товар #${item.product_id || item.id}`;
-                        const qty = item.quantity || 1;
-                        itemsHtml += `<li>${name}: ${qty} шт.</li>`;
-                    });
-                } else {
-                    itemsHtml += "<li>Товары не указаны</li>";
-                }
-                itemsHtml += "</ul>";
-
-                tr.innerHTML = `
-                    <td class="order-num">#${order.id}</td>
-                    <td class="user-id">${order.user_id}</td>
-                    <td>${itemsHtml}</td>
-                    <td style="text-align: right;">
-                        <button class="btn-complete" onclick="completeOrder(${order.id}, this)">
-                            ✓ Завершить
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } catch (err) {
-            console.error(err);
-            tbody.innerHTML = `<tr><td colspan="4" class="empty-msg" style="color: red;">Не удалось загрузить данные с сервера. Проверьте запущен ли бэкенд!</td></tr>`;
-        }
-    }
-
-    // Отправка запроса на завершение заказа в базу
-    async function completeOrder(orderId, buttonEl) {
-        try {
-            const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "Delivered" })
-            });
-
-            if (response.ok) {
-                const row = buttonEl.closest("tr");
-                row.style.transition = "all 0.3s";
-                row.style.opacity = "0";
-                setTimeout(() => {
-                    row.remove();
-                    const tbody = document.getElementById("ordersTableBody");
-                    if (tbody.children.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" class="empty-msg">Активных заказов нет 🎉</td></tr>`;
-                    }
-                }, 300);
-            } else {
-                alert("Не удалось обновить статус заказа в базе");
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Ошибка сети при обращении к серверу");
-        }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-        updateUserUI();
-        loadAdminOrders();
-    });
-</script>
-
+<script src="script.js"></script>
 </body>
 </html>

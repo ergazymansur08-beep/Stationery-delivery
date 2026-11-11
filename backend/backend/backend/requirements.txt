@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-supabase
-pydantic
-requests
-python-dotenv
-passlib

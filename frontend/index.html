@@ -3,117 +3,311 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StationaryHub — Каталог</title>
-    <link rel="stylesheet" href="script.css">
+    <title>Stationery Hub — Orders Admin</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 30px 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        /* Синяя шапка */
+        .header-banner {
+            background: linear-gradient(135deg, #006458, #2c8278);
+            border-radius: 16px;
+            padding: 25px 35px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .header-logo {
+            background: white;
+            border-radius: 50%;
+            width: 65px;
+            height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .header-logo img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+        }
+        .header-text h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .header-text p {
+            margin: 4px 0 0 0;
+            font-size: 14px;
+            color: #d0e1fd;
+            font-weight: 400;
+        }
+        /* Блок пользователя */
+        .user-bar {
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .btn-logout {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        /* Заголовок страницы */
+        .title-orders {
+            font-size: 34px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            color: #1e3c72;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        /* Карточка с таблицей */
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            border: 1px solid #e1e8ed;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 15px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eef2f5;
+        }
+        th {
+            color: #7f8c8d;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .order-num {
+            font-weight: bold;
+            color: #1e3c72;
+            font-size: 16px;
+        }
+        .user-id {
+            color: #555;
+            font-size: 15px;
+        }
+        .items-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #444;
+            font-size: 14px;
+        }
+        .items-list li {
+            margin-bottom: 4px;
+        }
+        .btn-complete {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        .btn-complete:hover {
+            background-color: #218838;
+        }
+        .empty-msg {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
 
 <div class="container">
-    
-    <div class="header">
-    <img src="https://img.hhcdn.ru/employer-logo-round/3561512.jpeg" alt="AITU Logo" class="aitu-logo" height="100">
-    
-    <h1>StationaryHub</h1>
-    <p>Connected to the Cloudservice SupaBase</p> 
-</div>
-</div>
+    <!-- Шапка -->
+    <div class="header-banner">
+        <div class="header-logo">
+            <img src="https://img.hhcdn.ru/employer-logo-round/3561512.jpeg" alt="AITU Logo" onerror="this.src='https://via.placeholder.com/50'">
+        </div>
+        <div class="header-text">
+            <h1>StationeryHub</h1>
+            <p>Connected to the Cloudservice SupaBase</p>
+        </div>
+    </div>
 
-  
+    <!-- Инфо о вошедшем админе -->
+    <div class="user-bar" id="userInfoContainer">
+        <span>👤 Alikhan (ID: 18)</span>
+        <button class="btn-logout" onclick="logout()">Выйти</button>
+    </div>
+
+    <!-- Раздел заказов -->
+    <div class="title-orders">Orders</div>
+
     <div class="card">
-        <h2>1. Каталог товаров (Чтение из базы и фильтрация)</h2>
-        
-        <div class="filter-group">
-            <label for="productFilter">Выберите товар для отображения:</label>
-            <select id="productFilter" onchange="filterProducts()">
-                <option value="all">Все товары (Показать всё)</option>
-            </select>
-        </div>
-
-        <div class="products-grid" id="productsGrid">
-            <p class="loading">Загрузка товаров из базы данных...</p>
-        </div>
-    </div>
-
-   
-    <div class="card">
-        <h2>2. Выбрать локацию доставки (Интерактивная карта AITU(Пока что лишь 1 этаж))</h2>
-        
-       
-        <div class="map-wrapper" style="position: relative; display: inline-block; width: 100%; max-width: 800px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f9f9f9; margin: 0 auto;">
-            
-           
-            <img src="https://cyogeqswcxkwwztovqqw.supabase.co/storage/v1/object/public/product-images/1stFloormb.png" alt="План 1 этажа AITU" id="aituMapImg" style="display: block; width: 100%; height: auto;">
-            
-         
-            <div class="map-room-zone" data-room="140" style="position: absolute; top: 22%; left: 30%; width: 4%; height: 6%;">140</div>
-            <div class="map-room-zone" data-room="143" style="position: absolute; top: 31%; left: 24%; width: 5%; height: 8%;">143</div>
-            <div class="map-room-zone" data-room="141" style="position: absolute; top: 31%; left: 29%; width: 4%; height: 6%;">141</div>
-            <div class="map-room-zone" data-room="142" style="position: absolute; top: 36%; left: 29%; width: 5%; height: 8%;">142</div>
-            <div class="map-room-zone" data-room="139" style="position: absolute; top: 22%; left: 27%; width: 4%; height: 6%;">139</div>
-
-            <div class="map-room-zone" data-room="155" style="position: absolute; top: 67%; left: 32%; width: 4%; height: 6%;">155</div>
-            <div class="map-room-zone" data-room="163" style="position: absolute; top: 63%; left: 32%; width: 4%; height: 3%;">163</div>
-            <div class="map-room-zone" data-room="164" style="position: absolute; top: 59%; left: 32%; width: 4%; height: 3%;">164</div>
-            <div class="map-room-zone" data-room="165" style="position: absolute; top: 59%; left: 26%; width: 5%; height: 8%;">165</div>
-            <div class="map-room-zone" data-room="168" style="position: absolute; top: 50%; left: 25%; width: 8%; height: 6%;">168</div>
-
-         
-            
-            <div class="map-room-zone" data-room="124K" style="position: absolute; top: 47%; left: 36%; width: 5%; height: 5%;">124K</div>
-            <div class="map-room-zone" data-room="123K" style="position: absolute; top: 54%; left: 36%; width: 5%; height: 5%;">123K</div>
-            <div class="map-room-zone" data-room="122K" style="position: absolute; top: 60%; left: 37%; width: 5%; height: 5%;">122K</div>
-            <div class="map-room-zone" data-room="121K" style="position: absolute; top: 66%; left: 37%; width: 5%; height: 5%;">121K</div>
-            
-            <div class="map-room-zone" data-room="139" style="position: absolute; top: 47%; left: 58%; width: 5%; height: 5%;">139</div>
-            <div class="map-room-zone" data-room="138L" style="position: absolute; top: 53%; left: 58%; width: 5%; height: 5%;">138L</div>
-            <div class="map-room-zone" data-room="137P" style="position: absolute; top: 59%; left: 58%; width: 5%; height: 5%;">137P</div>
-            <div class="map-room-zone" data-room="136" style="position: absolute; top: 64%; left: 57%; width: 5%; height: 5%;">136</div>
-            <div class="map-room-zone" data-room="135" style="position: absolute; top: 67%; left: 57%; width: 5%; height: 5%;">135</div>
-        </div>
-
-     
-        <form id="orderForm" onsubmit="submitOrder(event)">
-            <input type="hidden" name="user_id" value="1">
-            <input type="hidden" id="selectedLocationId" name="location_id" value="">
-            <input type="hidden" name="total_amount" value="0">
-
-            <div id="selectionStatusBlock" style="padding: 12px; background: #fff3cd; border: 1px solid #ffeeba; color: #856404; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; font-weight: bold; text-align: center;">
-                ⚠️ Пожалуйста, кликните на нужный кабинет на карте выше для оформления заказа.
-            </div>
-
-            <button type="submit" id="btnSubmitOrder" class="btn-submit" disabled style="cursor: not-allowed; padding: 10px 20px; width: 100%; font-size: 1.1em; font-weight: bold; border-radius: 4px; background: #6c757d; color: white; border: none; transition: background 0.3s;">
-                Оформить заказ
-            </button>
-        </form>
-        </div>
-        </div>
-
-     
-        <form id="orderForm" onsubmit="submitOrder(event)">
-          
-            <input type="hidden" name="user_id" value="1">
-            <input type="hidden" id="selectedLocationId" name="location_id" value="">
-            <input type="hidden" name="total_amount" value="0">
-
-           
-        </form>
+        <table>
+            <thead>
+                <tr>
+                    <th>Order Num</th>
+                    <th>User ID</th>
+                    <th>Товары</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="ordersTableBody">
+                <tr>
+                    <td colspan="4" class="empty-msg">Загрузка реальных заказов из базы...</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
-    <div class="card" style="margin-top: 20px;">
-        <h2>3. Корзина покупок</h2>
-        <div id="cartItems">
-            <p>Корзина пуста</p>
-        </div>
-        <div id="cartTotal" style="font-weight: bold; margin-top: 10px; font-size: 1.1em; color: #0056b3;">
-            Итого: ₸ 0
-        </div>
-    </div>
-    <div id="userInfoContainer" style="padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 5px;">
-    <input type="email" id="loginEmail" placeholder="Email (например, test@mail.kz)">
-    <input type="password" id="loginPassword" placeholder="Пароль">
-    <button onclick="loginUser(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value)">Войти</button>
-</div>
-<script src="script.js"></script>
+<script>
+    const API_URL = "http://127.0.0.1:8000/api";
+
+    function updateUserUI() {
+        const userId = localStorage.getItem("currentUserId") || "18";
+        const userName = localStorage.getItem("currentUserName") || "Alikhan";
+        const userContainer = document.getElementById("userInfoContainer");
+
+        if (userContainer) {
+            userContainer.innerHTML = `
+                <span>👤 ${userName} (ID: ${userId})</span>
+                <button class="btn-logout" onclick="logout()">Выйти</button>
+            `;
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem("currentUserId");
+        localStorage.removeItem("currentUserName");
+        localStorage.removeItem("userRole");
+        window.location.href = "index.html";
+    }
+
+    // Загрузка настоящих заказов с бэкенда
+    async function loadAdminOrders() {
+        const tbody = document.getElementById("ordersTableBody");
+        try {
+            const response = await fetch(`${API_URL}/orders`);
+            if (!response.ok) throw new Error("Ошибка загрузки заказов с сервера");
+            
+            const orders = await response.json();
+            
+            // Фильтруем: показываем только те заказы, которые еще не доставлены/не завершены
+            const activeOrders = orders.filter(o => o.status !== "Delivered" && o.status !== "completed");
+
+            if (activeOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="empty-msg">Активных заказов нет 🎉</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = "";
+            activeOrders.forEach(order => {
+                const tr = document.createElement("tr");
+                
+                // Формируем список купленных товаров из базы
+                let itemsHtml = "<ul class='items-list'>";
+                if (order.items && order.items.length > 0) {
+                    order.items.forEach(item => {
+                        // Подтягиваем название товара и его количество
+                        const name = item.product_name || item.name || `Товар #${item.product_id || item.id}`;
+                        const qty = item.quantity || 1;
+                        itemsHtml += `<li>${name}: ${qty} шт.</li>`;
+                    });
+                } else {
+                    itemsHtml += "<li>Товары не указаны</li>";
+                }
+                itemsHtml += "</ul>";
+
+                tr.innerHTML = `
+                    <td class="order-num">#${order.id}</td>
+                    <td class="user-id">${order.user_id}</td>
+                    <td>${itemsHtml}</td>
+                    <td style="text-align: right;">
+                        <button class="btn-complete" onclick="completeOrder(${order.id}, this)">
+                            ✓ Завершить
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            console.error(err);
+            tbody.innerHTML = `<tr><td colspan="4" class="empty-msg" style="color: red;">Не удалось загрузить данные с сервера. Проверьте запущен ли бэкенд!</td></tr>`;
+        }
+    }
+
+    // Отправка запроса на завершение заказа в базу
+    async function completeOrder(orderId, buttonEl) {
+        try {
+            const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "Delivered" })
+            });
+
+            if (response.ok) {
+                const row = buttonEl.closest("tr");
+                row.style.transition = "all 0.3s";
+                row.style.opacity = "0";
+                setTimeout(() => {
+                    row.remove();
+                    const tbody = document.getElementById("ordersTableBody");
+                    if (tbody.children.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="empty-msg">Активных заказов нет 🎉</td></tr>`;
+                    }
+                }, 300);
+            } else {
+                alert("Не удалось обновить статус заказа в базе");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Ошибка сети при обращении к серверу");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        updateUserUI();
+        loadAdminOrders();
+    });
+</script>
+
 </body>
 </html>
